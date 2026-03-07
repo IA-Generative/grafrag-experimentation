@@ -36,8 +36,8 @@ data:
       default_locale: "fr"
       query_in_title: false
 
-    redis:
-      url: redis://search-valkey:6379/0
+    valkey:
+      url: valkey://search-valkey:6379/0
 
     outgoing:
       request_timeout: 6.0

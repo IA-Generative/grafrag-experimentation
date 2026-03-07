@@ -105,6 +105,32 @@ grafrag-experimentation/
 - Pipeline service: `http://localhost:9099`
 - Keycloak in optional local SSO mode: `http://localhost:8082`
 
+To test the internet search module locally, start the dedicated profile:
+
+```bash
+docker compose --profile search up -d search-valkey searxng
+bash scripts/test_local_search.sh
+```
+
+Direct local checks:
+
+- SearXNG UI: `http://localhost:8083`
+- JSON API example:
+
+  ```bash
+  curl -fsS --get "http://localhost:8083/search" \
+    --data-urlencode "q=guerre de cent ans" \
+    --data-urlencode "format=json"
+  ```
+
+The local Docker search profile is intentionally simpler than Kubernetes:
+
+- it runs `searxng` plus `search-valkey`
+- it exposes search on `SEARXNG_LOCAL_PORT` / `SEARXNG_LOCAL_BASE_URL`
+- it uses direct egress by default for ease of local testing
+- it keeps the SearXNG limiter disabled locally so direct `localhost` calls are not blocked by missing reverse-proxy IP headers
+- the three regional egress proxies remain a Kubernetes-oriented architecture concern
+
 Exported shell variables take precedence over `.env`. If `printenv` already shows `SCW_SECRET_KEY_LLM`, `SCW_LLM_MODEL`, and `SCW_LLM_BASE_URL`, the local Docker and Kubernetes scripts will now reuse those values instead of overwriting them with placeholders from `.env`.
 
 `BRIDGE_PUBLIC_URL` controls the clickable graph link emitted by the bridge and displayed in Open WebUI responses. For local Docker, keep `BRIDGE_PUBLIC_URL=http://localhost:8081`.
@@ -190,7 +216,7 @@ The script renders manifests from [`k8s/base`](./k8s/base), creates secrets, imp
 The Kubernetes stack now also includes:
 
 - `searxng` as a separate search deployment with configurable replicas
-- `search-valkey` as the limiter/cache backend recommended by upstream SearXNG
+- `search-valkey` as the Valkey limiter/cache backend recommended by upstream SearXNG
 - a dedicated ingress on `SEARXNG_HOST`
 - a curated search profile that keeps major privacy-oriented engines first and keeps the rest intentionally constrained
 

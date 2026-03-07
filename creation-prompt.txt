@@ -83,6 +83,7 @@ Le repository généré doit aussi couvrir ce besoin complémentaire de manière
 
 1. Ajouter dans Open WebUI une famille de modèles généralistes Scaleway pertinents pour usage courant.
 2. Ajouter un module de recherche internet séparé, basé sur SearXNG, capable de tourner avec plusieurs replicas en Kubernetes.
+   Le repository doit aussi permettre un test local simple de cette recherche via Docker Compose.
 3. Documenter une architecture d’egress multi-régions cohérente sur Scaleway.
 4. Mettre à jour la documentation et le prompt lui-même pour que ce besoin soit rejouable.
 
@@ -134,6 +135,9 @@ Le repository généré doit ajouter un module de recherche internet séparé ba
 
 Exigences minimales :
 
+- profil Docker Compose local dédié, par exemple `search`, lançant au minimum `searxng` et `search-valkey`
+- endpoint local simple de test, par exemple `http://localhost:8083/search`
+- script de vérification locale permettant d’exécuter une requête JSON de test contre SearXNG
 - déploiement Kubernetes distinct pour SearXNG
 - service Kubernetes dédié
 - ingress TLS dédié
@@ -153,6 +157,12 @@ Le repository généré doit éviter une interprétation naïve de "tous les gra
 et éventuellement garder un moteur plus grand public comme Bing avec un poids moindre.
 
 Si Google n’est pas activé par défaut, le repository doit l’assumer et l’expliquer.
+
+Pour l’expérience locale Docker, le repository peut utiliser un egress direct plus simple afin de rester facilement testable. Il doit documenter explicitement que :
+
+- la topologie locale n’émule pas les trois proxys multi-régions
+- le limiter SearXNG local peut être désactivé pour éviter les blocages dus à l’absence d’en-têtes IP de reverse proxy sur `localhost`
+- la topologie multi-régions reste portée par l’architecture Kubernetes / proxys d’egress externes
 
 --------------------------------------------------
 

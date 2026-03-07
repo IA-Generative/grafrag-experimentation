@@ -23,7 +23,7 @@ spec:
             - name: SEARXNG_BASE_URL
               value: https://${SEARXNG_HOST}
             - name: SEARXNG_VALKEY_URL
-              value: redis://search-valkey:6379/0
+              value: valkey://search-valkey:6379/0
             - name: SEARXNG_SECRET
               valueFrom:
                 secretKeyRef:

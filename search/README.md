@@ -2,6 +2,21 @@
 
 This repository deploys SearXNG inside Kubernetes, but it does not pretend that a single Scaleway Kapsule cluster can natively span several regions for egress.
 
+For local developer testing, the repository also provides a lighter Docker Compose profile with:
+
+- `searxng`
+- `search-valkey`
+- direct local egress
+- limiter disabled to avoid localhost false positives
+- a JSON API on `http://localhost:8083/search`
+
+Start it with:
+
+```bash
+docker compose --profile search up -d search-valkey searxng
+bash scripts/test_local_search.sh
+```
+
 ## In-Cluster Components
 
 The Kubernetes stack now includes:
