@@ -77,6 +77,13 @@ services:
       OAUTH_SCOPES: openid profile email
       OPENAI_API_BASE_URL: http://pipelines:9099/v1
       OPENAI_API_KEY: ${PIPELINES_API_KEY:-CHANGE_ME}
+      ENABLE_WEB_SEARCH: ${ENABLE_WEB_SEARCH:-true}
+      WEB_SEARCH_ENGINE: ${WEB_SEARCH_ENGINE:-searxng}
+      WEB_SEARCH_RESULT_COUNT: ${WEB_SEARCH_RESULT_COUNT:-5}
+      WEB_SEARCH_CONCURRENT_REQUESTS: ${WEB_SEARCH_CONCURRENT_REQUESTS:-3}
+      WEB_SEARCH_TRUST_ENV: ${WEB_SEARCH_TRUST_ENV:-false}
+      SEARXNG_QUERY_URL: ${SEARXNG_QUERY_URL:-http://searxng:8080/search}
+      SEARXNG_LANGUAGE: ${SEARXNG_LANGUAGE:-all}
     volumes:
       - ./openwebui/data:/app/backend/data
     depends_on:

@@ -14,8 +14,11 @@ Start it with:
 
 ```bash
 docker compose --profile search up -d search-valkey searxng
+docker compose up -d openwebui
 bash scripts/test_local_search.sh
 ```
+
+Open WebUI is configured to consume this local SearXNG service through the internal Compose URL `http://searxng:8080/search` when the `search` profile is running.
 
 ## In-Cluster Components
 

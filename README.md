@@ -109,6 +109,7 @@ To test the internet search module locally, start the dedicated profile:
 
 ```bash
 docker compose --profile search up -d search-valkey searxng
+docker compose up -d openwebui
 bash scripts/test_local_search.sh
 ```
 
@@ -130,6 +131,17 @@ The local Docker search profile is intentionally simpler than Kubernetes:
 - it uses direct egress by default for ease of local testing
 - it keeps the SearXNG limiter disabled locally so direct `localhost` calls are not blocked by missing reverse-proxy IP headers
 - the three regional egress proxies remain a Kubernetes-oriented architecture concern
+
+Open WebUI is now preconfigured at deployment time to use SearXNG as its web search backend:
+
+- `ENABLE_WEB_SEARCH=true`
+- `WEB_SEARCH_ENGINE=searxng`
+- `SEARXNG_QUERY_URL=http://searxng:8080/search` in local Docker
+- `SEARXNG_QUERY_URL=http://searxng/search` in Kubernetes
+- `WEB_SEARCH_RESULT_COUNT=5`
+- `WEB_SEARCH_CONCURRENT_REQUESTS=3`
+
+In local Docker, web search from Open WebUI only works when the `search` profile is running because the internal backend URL points to the `searxng` service on the Compose network.
 
 Exported shell variables take precedence over `.env`. If `printenv` already shows `SCW_SECRET_KEY_LLM`, `SCW_LLM_MODEL`, and `SCW_LLM_BASE_URL`, the local Docker and Kubernetes scripts will now reuse those values instead of overwriting them with placeholders from `.env`.
 
@@ -219,6 +231,8 @@ The Kubernetes stack now also includes:
 - `search-valkey` as the Valkey limiter/cache backend recommended by upstream SearXNG
 - a dedicated ingress on `SEARXNG_HOST`
 - a curated search profile that keeps major privacy-oriented engines first and keeps the rest intentionally constrained
+
+Open WebUI is also preconfigured in Kubernetes to use that in-cluster SearXNG service directly for web search through `http://searxng/search`, so the feature works immediately after deployment without additional manual setup in the admin UI.
 
 SearXNG is configured to send outbound requests through three explicit proxy endpoints:
 

@@ -138,6 +138,7 @@ Exigences minimales :
 - profil Docker Compose local dédié, par exemple `search`, lançant au minimum `searxng` et `search-valkey`
 - endpoint local simple de test, par exemple `http://localhost:8083/search`
 - script de vérification locale permettant d’exécuter une requête JSON de test contre SearXNG
+- configuration explicite d’Open WebUI pour utiliser SearXNG comme moteur de recherche web dès le déploiement, sans action manuelle ultérieure dans l’interface d’administration
 - déploiement Kubernetes distinct pour SearXNG
 - service Kubernetes dédié
 - ingress TLS dédié
@@ -163,6 +164,19 @@ Pour l’expérience locale Docker, le repository peut utiliser un egress direct
 - la topologie locale n’émule pas les trois proxys multi-régions
 - le limiter SearXNG local peut être désactivé pour éviter les blocages dus à l’absence d’en-têtes IP de reverse proxy sur `localhost`
 - la topologie multi-régions reste portée par l’architecture Kubernetes / proxys d’egress externes
+
+Le repository généré doit aussi configurer Open WebUI pour que la recherche web fonctionne dès le démarrage :
+
+- `ENABLE_WEB_SEARCH=true`
+- `WEB_SEARCH_ENGINE=searxng`
+- une `SEARXNG_QUERY_URL` interne adaptée à chaque environnement
+
+Exemples attendus :
+
+- local Docker Compose : `http://searxng:8080/search`
+- Kubernetes : `http://searxng/search`
+
+La documentation doit préciser qu’en local, Open WebUI ne peut utiliser cette recherche que si le profil Docker `search` a effectivement été démarré.
 
 --------------------------------------------------
 
