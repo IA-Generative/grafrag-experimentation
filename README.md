@@ -191,6 +191,8 @@ The script deprovisions previous overrides, then recreates them in [`openwebui/d
 - a `profile_image_url` pointing to `${BRIDGE_PUBLIC_URL}/assets/mirai-model-avatar-128.png`
 - short descriptive metadata and tags
 
+In local Docker, those overrides persist because [`openwebui/data`](./openwebui/data) is bind-mounted from the repository. In the current Kubernetes manifests, Open WebUI stores `/app/backend/data` on an `emptyDir`, so model overrides, MirAI avatars, and similar admin-side state disappear on pod recreation unless you either switch that mount to a PVC or rerun `python3 scripts/provision_openwebui_model_aliases.py` after each rollout. The current [`deploy/deploy-k8s.sh`](./deploy/deploy-k8s.sh) does not invoke that reprovisioning step automatically.
+
 In the default local configuration, Open WebUI hides the native login form and only exposes the Keycloak OIDC button. Start the optional SSO profile before using that button:
 
 ```bash
@@ -247,6 +249,8 @@ The Kubernetes stack now also includes:
 - a curated search profile that keeps major privacy-oriented engines first and keeps the rest intentionally constrained
 
 Open WebUI is also preconfigured in Kubernetes to use that in-cluster SearXNG service directly for web search through `http://searxng/search`, so the feature works immediately after deployment without additional manual setup in the admin UI.
+
+The Kubernetes deployment also keeps OIDC onboarding usable out of the box: `ENABLE_OAUTH_SIGNUP=true` and `DEFAULT_USER_ROLE=user`, so a new user arriving from Keycloak is created directly as an active regular user instead of remaining in a `pending` state.
 
 To smoke-test that module from a workstation without depending on public DNS, run:
 
@@ -308,6 +312,7 @@ Set these variables when you want the Kubernetes cache sync enabled:
 - Keep the graph viewer deployable without indexing. Full GraphRAG artifacts remain optional for richer graph exploration, not a prerequisite for bringing the stack up.
 - Keycloak behind the ingress must advertise the public hostname and trust forwarded headers (`--hostname=${KEYCLOAK_HOST}` plus `--proxy-headers=xforwarded`), otherwise OIDC redirects and issuer metadata break externally.
 - The current SearXNG profile intentionally excludes DuckDuckGo because it triggered repeated CAPTCHA failures in this deployment. The in-cluster backend also runs with `server.limiter: false` to avoid `429` on Open WebUI backend calls that do not look like browser traffic.
+- MirAI model logos inside Open WebUI are not automatic on the current Scaleway rollout. They live in Open WebUI model overrides stored in `webui.db`, and the current Kubernetes deployment keeps `/app/backend/data` on `emptyDir`. Without a PVC or a post-deploy reprovision step, those avatars disappear after a rollout.
 - Keep rotated Keycloak realm passwords outside Git-tracked realm files. Use the ignored local file `keycloak/realm-passwords.local.json` and render it into Kubernetes at deploy time.
 - Keep manifest rendering on an explicit `envsubst` allowlist. Blindly substituting every `${...}` placeholder in generated configs caused accidental replacements in unrelated config blocks.
 
@@ -333,6 +338,8 @@ Default test credentials follow the prompt requirements: `userX@test.local` and 
 For Kubernetes password rotations, the deployment can also consume the ignored
 local file `keycloak/realm-passwords.local.json` so rotated passwords do not
 need to be committed to Git.
+
+Do not bookmark or reuse Keycloak URLs under `.../login-actions/authenticate?...session_code=...`. They are one-shot URLs tied to a transient browser login flow. After a Keycloak restart or an expired tab, `invalid_code` on that URL does not by itself mean the OIDC configuration is broken.
 
 ## LLM Backends
 

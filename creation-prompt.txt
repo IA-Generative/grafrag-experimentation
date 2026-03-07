@@ -75,6 +75,7 @@ Source documentaire GraphRAG par défaut :
 - le projet ne doit pas prétendre utiliser les espaces documentaires / knowledge d’Open WebUI si cette synchronisation n’est pas réellement implémentée
 - le bridge peut exposer une UI de visualisation du graphe sur /graph, indépendante d’Open WebUI, et Open WebUI peut seulement y pointer par lien
 - Open WebUI peut enrichir les modèles GraphRAG avec des overrides/aliases persistés dans sa base (`webui.db`) afin d’y associer un nom affiché, une description et une image de profil de modèle
+- en Kubernetes, ce state Open WebUI ne doit pas être traité comme durable si `/app/backend/data` est monté en `emptyDir` ; le repository doit soit assumer ce caractère jetable et reprovisionner explicitement les aliases au déploiement, soit préférer une persistance via PVC
 
 --------------------------------------------------
 
@@ -379,6 +380,7 @@ En local, si le repository expose un login OIDC Keycloak :
 - le bouton OIDC d’Open WebUI ne doit pas rediriger le navigateur vers un hostname Docker interne de type keycloak:8080
 - si le formulaire natif Open WebUI est masqué, le repository doit le faire explicitement avec ENABLE_LOGIN_FORM=false
 - les utilisateurs Keycloak de test doivent pouvoir créer leur compte Open WebUI via OIDC local, donc ENABLE_OAUTH_SIGNUP=true doit être activé pour ce scénario
+- les nouveaux utilisateurs OIDC doivent etre crees directement comme utilisateurs Open WebUI actifs via DEFAULT_USER_ROLE=user, et non laisses en pending
 - le README doit expliquer que docker compose --profile sso up -d keycloak est nécessaire avant tout test OIDC local
 - le README doit proposer le raccourci direct http://localhost:3000/oauth/oidc/login pour démarrer la connexion
 - si le visualiseur GraphRAG est protégé par OIDC, il doit réutiliser Keycloak local et rediriger le navigateur vers http://localhost:8082 en cas de session absente ou expirée
@@ -768,6 +770,7 @@ Si le profil SSO local est lancé, les tests doivent aussi vérifier :
 - le document de discovery local de Keycloak annonce un issuer et des endpoints en http://localhost:8082/...
 - si le repository choisit un mode Keycloak uniquement, /api/config d’Open WebUI reflète enable_login_form=false et un provider oauth Keycloak
 - le login OIDC d’un utilisateur de test comme user1@test.local aboutit réellement à une session Open WebUI, sans erreur 403 liée à ENABLE_OAUTH_SIGNUP
+- un premier login OIDC cree un utilisateur Open WebUI actif, pas un compte pending
 - les logs Open WebUI ne doivent pas contenir un rejet OAuth du type Access Prohibited après un callback OIDC valide
 - si un visualiseur GraphRAG protégé est fourni, GET /graph/config indique clairement le mode auth attendu
 - si un visualiseur GraphRAG protégé est fourni, GET /graph/data sans bearer token retourne 401
@@ -1013,9 +1016,12 @@ Le repository généré doit intégrer explicitement les leçons suivantes au li
 - l’image `bridge` doit être buildée explicitement en `linux/amd64` pour le cluster Scaleway ciblé si les nœuds ne sont pas homogènes avec la machine de build
 - le déploiement Keycloak derrière ingress doit utiliser le bon hostname public et des headers proxy fiables ; en pratique il faut prévoir `--hostname=<host public>` et `--proxy-headers=xforwarded`
 - la configuration OIDC ne doit jamais produire des redirections du type `http://https//...` ; le repository doit vérifier ce flux en test
+- pour l’onboarding SSO, ENABLE_OAUTH_SIGNUP=true ne suffit pas ; il faut aussi DEFAULT_USER_ROLE=user pour que les nouveaux utilisateurs Keycloak soient utilisables immédiatement dans Open WebUI
 - le module SearXNG doit refléter les contraintes réelles d’exploitation observées : DuckDuckGo peut être trop instable à cause des CAPTCHA et doit pouvoir être retiré proprement du profil par défaut
 - pour des appels backend Open WebUI -> SearXNG en HTTP interne, le limiter SearXNG peut renvoyer des `429` même quand le service semble sain ; le repository doit soit désactiver ce limiter pour le trafic interne, soit séparer un endpoint interne non limité d’un endpoint public protégé
 - le repository doit inclure un test Kubernetes de recherche web qui regarde aussi les logs SearXNG et résume les refus moteur (`CAPTCHA`, `403`, `429`, `blocked`, `refused`)
+- les logos MirAI dans Open WebUI ne vivent pas dans les assets du viewer seuls ; ils dependent d’overrides/model aliases stockes dans `webui.db` avec `profile_image_url`
+- si le deploiement Kubernetes Open WebUI garde `/app/backend/data` en `emptyDir`, ces overrides et donc les logos MirAI disparaissent a chaque rollout ; le repository doit soit monter un PVC, soit reprovisionner explicitement les model aliases apres deploiement
 - la rotation des mots de passe Keycloak du realm ne doit jamais écrire les secrets rotatés dans les fichiers versionnés ; il faut un store local ignoré par Git, par exemple `keycloak/realm-passwords.local.json`
 - le rendu des manifests ne doit pas faire un `envsubst` global sans garde-fou ; il faut limiter explicitement la liste des variables autorisées pour éviter des substitutions accidentelles
 - la documentation doit expliquer que les URL temporaires Keycloak `login-actions/authenticate?...session_code=...` sont jetables et qu’une erreur `invalid_code` après redémarrage n’implique pas nécessairement un bug persistant
