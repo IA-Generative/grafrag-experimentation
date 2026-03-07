@@ -50,6 +50,9 @@ services:
       - .env
     environment:
       PIPELINES_API_KEY: ${PIPELINES_API_KEY:-CHANGE_ME}
+      SCW_LLM_BASE_URL: ${SCW_LLM_BASE_URL:-}
+      SCW_SECRET_KEY_LLM: ${SCW_SECRET_KEY_LLM:-}
+      SCW_LLM_MODEL: ${SCW_LLM_MODEL:-}
     volumes:
       - ./pipelines:/app/pipelines
     depends_on:

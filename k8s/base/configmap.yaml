@@ -21,4 +21,6 @@ data:
   GRAPHRAG_TOP_K: "${GRAPHRAG_TOP_K}"
   OPENWEBUI_HOST: "${OPENWEBUI_HOST}"
   KEYCLOAK_HOST: "${KEYCLOAK_HOST}"
+  SEARXNG_HOST: "${SEARXNG_HOST}"
+  SEARXNG_BASE_URL: "https://${SEARXNG_HOST}"
   OPENID_PROVIDER_URL: "https://${KEYCLOAK_HOST}/realms/openwebui/.well-known/openid-configuration"

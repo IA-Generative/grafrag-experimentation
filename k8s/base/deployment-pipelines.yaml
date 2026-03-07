@@ -17,21 +17,18 @@ spec:
         - name: pipelines
           image: ${PIPELINES_IMAGE}
           imagePullPolicy: IfNotPresent
-          env:
-            - name: PIPELINES_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: grafrag-secrets
-                  key: PIPELINES_API_KEY
+          envFrom:
+            - configMapRef:
+                name: grafrag-config
+            - secretRef:
+                name: grafrag-secrets
           ports:
             - containerPort: 9099
               name: http
           volumeMounts:
             - name: pipelines-config
-              mountPath: /app/pipelines/graphrag_pipeline.py
-              subPath: graphrag_pipeline.py
+              mountPath: /app/pipelines
       volumes:
         - name: pipelines-config
           configMap:
             name: pipelines-config
-

@@ -4,7 +4,7 @@ resources:
   - namespace.yaml
   - pvc-graphrag.yaml
   - configmap.yaml
-  - configmap-pipelines.yaml
+  - configmap-searxng.yaml
   - deployment-bridge.yaml
   - service-bridge.yaml
   - deployment-pipelines.yaml
@@ -13,7 +13,11 @@ resources:
   - service-openwebui.yaml
   - deployment-keycloak.yaml
   - service-keycloak.yaml
+  - deployment-searxng.yaml
+  - service-searxng.yaml
+  - deployment-valkey.yaml
+  - service-valkey.yaml
   - ingress-openwebui.yaml
   - ingress-keycloak.yaml
+  - ingress-searxng.yaml
   - job-graphrag-index.yaml
-

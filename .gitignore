@@ -26,6 +26,7 @@ openwebui/data/
 graphrag/cache/
 graphrag/output/*
 !graphrag/output/.gitkeep
+pipelines/*/valves.json
 dist/
 build/
 *.pem

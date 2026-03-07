@@ -17,11 +17,37 @@ MODEL_OVERRIDES = (
         "id": "graphrag-bridge.graphrag-local",
         "name": "MirAI GraphRAG Local",
         "description": "Exploration ciblee du corpus GraphRAG.",
+        "tags": ["MirAI", "GraphRAG"],
     },
     {
         "id": "graphrag-bridge.graphrag-global",
         "name": "MirAI GraphRAG Global",
         "description": "Synthese globale et transversale du corpus GraphRAG.",
+        "tags": ["MirAI", "GraphRAG"],
+    },
+    {
+        "id": "scaleway-general.gpt-oss-120b",
+        "name": "MirAI Chat GPT-OSS 120B",
+        "description": "Modele generaliste puissant pour raisonnement et taches complexes.",
+        "tags": ["MirAI", "Scaleway", "General"],
+    },
+    {
+        "id": "scaleway-general.llama-3.3-70b-instruct",
+        "name": "MirAI Chat Llama 3.3 70B",
+        "description": "Generaliste multilingue robuste pour conversation et analyse.",
+        "tags": ["MirAI", "Scaleway", "General"],
+    },
+    {
+        "id": "scaleway-general.mistral-small-3.2-24b-instruct-2506",
+        "name": "MirAI Chat Mistral Small 3.2",
+        "description": "Bon equilibre latence/qualite pour usage quotidien.",
+        "tags": ["MirAI", "Scaleway", "General"],
+    },
+    {
+        "id": "scaleway-general.qwen3-235b-a22b-instruct-2507",
+        "name": "MirAI Chat Qwen3 235B",
+        "description": "Grand contexte et bonnes performances generalistes multilingues.",
+        "tags": ["MirAI", "Scaleway", "General"],
     },
 )
 
@@ -131,6 +157,10 @@ def collect_target_ids() -> tuple[list[str], list[str]]:
         "mirai-graphrag-global",
         "graphrag-local-alias",
         "graphrag-global-alias",
+        "mirai-chat-gptoss",
+        "mirai-chat-llama",
+        "mirai-chat-mistral",
+        "mirai-chat-qwen",
     ]
     return override_ids, legacy_alias_ids
 
@@ -184,7 +214,7 @@ def provision(
         meta = {
             "profile_image_url": icon_url,
             "description": model["description"],
-            "tags": [{"name": "MirAI"}, {"name": "GraphRAG"}],
+            "tags": [{"name": tag} for tag in model.get("tags", ["MirAI"])],
         }
         params = {}
         cursor.execute(

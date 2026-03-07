@@ -77,6 +77,106 @@ Source documentaire GraphRAG par défaut :
 
 --------------------------------------------------
 
+EXTENSION STRUCTUREE : MODELES GENERALISTES ET RECHERCHE INTERNET
+
+Le repository généré doit aussi couvrir ce besoin complémentaire de manière structurée :
+
+1. Ajouter dans Open WebUI une famille de modèles généralistes Scaleway pertinents pour usage courant.
+2. Ajouter un module de recherche internet séparé, basé sur SearXNG, capable de tourner avec plusieurs replicas en Kubernetes.
+3. Documenter une architecture d’egress multi-régions cohérente sur Scaleway.
+4. Mettre à jour la documentation et le prompt lui-même pour que ce besoin soit rejouable.
+
+Amendement d’architecture attendu :
+
+Le repository ne doit pas prétendre qu’un unique cluster Kubernetes Kapsule peut faire tourner nativement des pods répartis entre plusieurs régions Scaleway comme s’il s’agissait d’un seul plan de données global.
+
+Si une exigence de sorties internet multi-régions est demandée, la solution propre doit être :
+
+- cluster principal dans une région Kapsule
+- pods SearXNG dans ce cluster
+- trois nœuds ou pools de proxy d’egress séparés, hors du cluster ou gérés à part, chacun dans une région Scaleway différente
+- distribution des requêtes SearXNG vers ces trois proxys
+
+Le repository généré doit explicitement l’expliquer.
+
+Autre amendement important :
+
+Si le besoin métier dit "10 IPs de sortie par nœud", le repository ne doit pas l’implémenter naïvement sans discussion.
+
+Il doit documenter la contrainte réelle du provider et proposer une solution plus réaliste si nécessaire, par exemple :
+
+- 5 IPv4 flexibles + 5 IPv6 publiques sur un nœud si cela suffit
+- ou 2 nœuds de proxy par région si 10 IPv4 distinctes sont réellement requises
+
+--------------------------------------------------
+
+MODELES GENERALISTES OPEN WEBUI
+
+Comme Open WebUI de ce repository parle déjà au service `pipelines`, la manière la plus propre d’ajouter des modèles généralistes n’est pas de multiplier les providers directs dans Open WebUI, mais d’exposer un pipeline manifold dédié de type `scaleway-general`.
+
+Le repository généré doit donc :
+
+- ajouter un pipeline généraliste distinct du pipeline GraphRAG
+- exposer au minimum ces modèles via ce manifold :
+- gpt-oss-120b
+- llama-3.3-70b-instruct
+- mistral-small-3.2-24b-instruct-2506
+- qwen3-235b-a22b-instruct-2507
+- configurer ce pipeline avec SCW_LLM_BASE_URL et SCW_SECRET_KEY_LLM
+- conserver un rendu OpenAI-compatible vis-à-vis d’Open WebUI
+- provisionner dans Open WebUI des overrides/aliases avec nom lisible, description, tags et image de profil
+
+--------------------------------------------------
+
+MODULE DE RECHERCHE INTERNET
+
+Le repository généré doit ajouter un module de recherche internet séparé basé sur https://github.com/searxng/searxng
+
+Exigences minimales :
+
+- déploiement Kubernetes distinct pour SearXNG
+- service Kubernetes dédié
+- ingress TLS dédié
+- backend Valkey/Redis si nécessaire pour le limiter et la robustesse multi-replicas
+- nombre de replicas paramétrable
+- configuration d’un profil de moteurs de recherche généralistes qui privilégie les moteurs plus alignés avec des valeurs d’anonymat et de confidentialité
+
+Le repository généré doit éviter une interprétation naïve de "tous les grands moteurs". Il doit privilégier par défaut :
+
+- DuckDuckGo
+- Brave
+- Startpage
+- Qwant
+- Mojeek
+- Wikipédia
+
+et éventuellement garder un moteur plus grand public comme Bing avec un poids moindre.
+
+Si Google n’est pas activé par défaut, le repository doit l’assumer et l’expliquer.
+
+--------------------------------------------------
+
+EGRESS MULTI-REGIONS POUR LA RECHERCHE INTERNET
+
+Le repository généré doit configurer SearXNG pour envoyer ses requêtes vers trois proxys d’egress distincts, par exemple :
+
+- un proxy en région Paris
+- un proxy en région Amsterdam
+- un proxy en région Warsaw
+
+Le repository doit documenter que SearXNG peut distribuer les requêtes entre plusieurs proxys sortants et qu’une stratégie de rotation d’IP peut être portée par les proxys d’egress eux-mêmes.
+
+Le repository généré n’est pas obligé d’embarquer toute l’infrastructure proxy multi-régions dans le cluster Kubernetes principal si cela contredit le modèle régional du provider.
+
+En revanche, il doit :
+
+- prévoir les variables de configuration nécessaires pour les trois proxys d’egress
+- documenter clairement la topologie recommandée
+- expliquer comment positionner les nœuds de sortie dans différentes régions Scaleway
+
+
+--------------------------------------------------
+
 ENDPOINT LLM
 
 Le système doit fonctionner avec un endpoint LLM compatible OpenAI.

@@ -42,6 +42,8 @@ kubectl apply -f k8s/rendered/namespace.yaml
 kubectl apply -f k8s/rendered/clusterissuer-letsencrypt.yaml
 kubectl apply -f k8s/rendered/pvc-graphrag.yaml
 kubectl apply -f k8s/rendered/configmap.yaml
+kubectl apply -f k8s/rendered/configmap-searxng.yaml
+python3 scripts/render_pipelines_configmap.py "$NAMESPACE" > k8s/rendered/configmap-pipelines.yaml
 kubectl apply -f k8s/rendered/configmap-pipelines.yaml
 
 kubectl -n "$NAMESPACE" create configmap keycloak-realm \
@@ -56,13 +58,20 @@ kubectl apply -f k8s/rendered/deployment-openwebui.yaml
 kubectl apply -f k8s/rendered/service-openwebui.yaml
 kubectl apply -f k8s/rendered/deployment-keycloak.yaml
 kubectl apply -f k8s/rendered/service-keycloak.yaml
+kubectl apply -f k8s/rendered/deployment-valkey.yaml
+kubectl apply -f k8s/rendered/service-valkey.yaml
+kubectl apply -f k8s/rendered/deployment-searxng.yaml
+kubectl apply -f k8s/rendered/service-searxng.yaml
 kubectl apply -f k8s/rendered/ingress-openwebui.yaml
 kubectl apply -f k8s/rendered/ingress-keycloak.yaml
+kubectl apply -f k8s/rendered/ingress-searxng.yaml
 
 kubectl -n "$NAMESPACE" wait --for=condition=available deployment/bridge --timeout=240s
 kubectl -n "$NAMESPACE" wait --for=condition=available deployment/pipelines --timeout=240s
 kubectl -n "$NAMESPACE" wait --for=condition=available deployment/openwebui --timeout=240s
 kubectl -n "$NAMESPACE" wait --for=condition=available deployment/keycloak --timeout=240s
+kubectl -n "$NAMESPACE" wait --for=condition=available deployment/searxng --timeout=240s
+kubectl -n "$NAMESPACE" wait --for=condition=available deployment/search-valkey --timeout=240s
 
 kubectl -n "$NAMESPACE" delete job graphrag-index --ignore-not-found
 kubectl apply -f k8s/rendered/job-graphrag-index.yaml

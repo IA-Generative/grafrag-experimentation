@@ -130,15 +130,21 @@ The viewer also includes a synthesis workflow aimed at people who need to build 
 
 Brand assets for the viewer live in [`bridge/assets`](./bridge/assets). The master image is [`bridge/assets/mirai-graphrag.png`](./bridge/assets/mirai-graphrag.png); regenerate the reduced PNGs, favicon, Apple touch icon, Android icons, and the dedicated Open WebUI model avatar (`mirai-model-avatar-128.png`) with `python3 scripts/generate_brand_assets.py`.
 
-Open WebUI model aliases/overrides can carry their own image via `meta.profile_image_url`. This repository reprovisions the two GraphRAG model entries (`graphrag-bridge.graphrag-local` and `graphrag-bridge.graphrag-global`) with a mascot-based image using:
+Open WebUI model aliases/overrides can carry their own image via `meta.profile_image_url`. This repository reprovisions:
+
+- the two GraphRAG model entries (`graphrag-bridge.graphrag-local` and `graphrag-bridge.graphrag-global`)
+- four general-purpose Scaleway chat models exposed through the `scaleway-general` pipeline manifold
+
+using:
 
 ```bash
 python3 scripts/provision_openwebui_model_aliases.py
 ```
 
-The script deprovisions previous GraphRAG overrides, then recreates them in [`openwebui/data/webui.db`](./openwebui/data/webui.db) with:
+The script deprovisions previous overrides, then recreates them in [`openwebui/data/webui.db`](./openwebui/data/webui.db) with:
 
 - names `MirAI GraphRAG Local` and `MirAI GraphRAG Global`
+- names `MirAI Chat GPT-OSS 120B`, `MirAI Chat Llama 3.3 70B`, `MirAI Chat Mistral Small 3.2`, and `MirAI Chat Qwen3 235B`
 - a `profile_image_url` pointing to `${BRIDGE_PUBLIC_URL}/assets/mirai-model-avatar-128.png`
 - short descriptive metadata and tags
 
@@ -171,7 +177,7 @@ The Kubernetes deployment expects:
 - cert-manager
 - Docker image push access to `REGISTRY`
 - a namespace defined by `NAMESPACE`
-- DNS records for `OPENWEBUI_HOST` and `KEYCLOAK_HOST`
+- DNS records for `OPENWEBUI_HOST`, `KEYCLOAK_HOST`, and `SEARXNG_HOST`
 
 Deploy the full stack:
 
@@ -179,7 +185,30 @@ Deploy the full stack:
 ./deploy/deploy-k8s.sh
 ```
 
-The script renders manifests from [`k8s/base`](./k8s/base), creates secrets, imports the Keycloak realm, waits for readiness, then launches smoke and integration checks.
+The script renders manifests from [`k8s/base`](./k8s/base), creates secrets, imports the Keycloak realm, generates the pipelines ConfigMap directly from the local [`pipelines`](./pipelines) directory, waits for readiness, then launches smoke and integration checks.
+
+The Kubernetes stack now also includes:
+
+- `searxng` as a separate search deployment with configurable replicas
+- `search-valkey` as the limiter/cache backend recommended by upstream SearXNG
+- a dedicated ingress on `SEARXNG_HOST`
+- a curated search profile that keeps major privacy-oriented engines first and keeps the rest intentionally constrained
+
+SearXNG is configured to send outbound requests through three explicit proxy endpoints:
+
+- `${SEARXNG_OUTBOUND_PROXY_PAR_URL}`
+- `${SEARXNG_OUTBOUND_PROXY_AMS_URL}`
+- `${SEARXNG_OUTBOUND_PROXY_WAW_URL}`
+
+This is intentional. A single Scaleway Kapsule cluster is regional, so a clean multi-region egress design should not try to fake `three regions` with pods inside one cluster. Instead:
+
+- keep the search pods in the cluster
+- place three forward-proxy egress nodes outside the cluster, one in each target region
+- point SearXNG at those three proxies, letting SearXNG distribute requests across them
+
+The `k8s/base/configmap-searxng.yaml` profile favors privacy-oriented engines such as DuckDuckGo, Brave, Startpage, Qwant, and Mojeek. Bing stays available with a lower weight. Google is intentionally not enabled by default in this repository because it is both less privacy-friendly and more likely to trigger anti-bot countermeasures in self-hosted metasearch deployments.
+
+For the `10 egress IPs per exit node` requirement, this repository deliberately amends the initial idea: on Scaleway Instances, a single VM can attach up to five flexible routed IPv4 addresses and up to five public IPv6 addresses. If you strictly need ten IPv4 addresses per region, use two proxy VMs per region or another regional egress pool instead of a single node.
 
 GraphRAG itself only supports `file`, Azure Blob, and CosmosDB storage backends for cache. In this repository, Kubernetes therefore uses a pragmatic S3 sync layer:
 
@@ -235,6 +264,8 @@ If the external model is unavailable, the bridge returns a deterministic answer 
 For the current local defaults, this repository is preconfigured for Scaleway chat plus multilingual embeddings. You still need to set `SCW_SECRET_KEY_LLM` in `.env` before live GraphRAG indexing can call the provider.
 
 The bridge and deployment scripts keep compatibility with legacy `OPENAI_*` environment variables, but `SCW_*` is now the primary configuration surface for this repository.
+
+Open WebUI itself still points to the `pipelines` service. The general-purpose Scaleway chat models are therefore exposed through a dedicated pipeline manifold instead of a second direct provider configuration inside Open WebUI. This keeps the architecture coherent: Open WebUI always talks to one OpenAI-compatible endpoint, while the `pipelines` layer decides whether a request goes to GraphRAG or to a direct Scaleway chat model.
 
 ## Secrets
 
