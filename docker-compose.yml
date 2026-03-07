@@ -1,0 +1,108 @@
+version: "3.9"
+
+services:
+  bridge:
+    build:
+      context: .
+      dockerfile: bridge/Dockerfile
+    env_file:
+      - .env
+    environment:
+      BRIDGE_HOST: 0.0.0.0
+      BRIDGE_PORT: 8081
+      BRIDGE_PUBLIC_URL: ${BRIDGE_PUBLIC_URL:-http://localhost:8081}
+      OPENWEBUI_PUBLIC_URL: ${OPENWEBUI_PUBLIC_URL:-http://localhost:3000}
+      KEYCLOAK_PUBLIC_URL: ${KEYCLOAK_PUBLIC_URL:-http://localhost:8082}
+      KEYCLOAK_INTERNAL_URL: ${KEYCLOAK_INTERNAL_URL:-http://keycloak:8080}
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM:-openwebui}
+      GRAPH_VIEWER_CLIENT_ID: ${GRAPH_VIEWER_CLIENT_ID:-graphrag-viewer}
+      GRAPH_VIEWER_AUTH_REQUIRED: ${GRAPH_VIEWER_AUTH_REQUIRED:-true}
+      SCW_LLM_BASE_URL: ${SCW_LLM_BASE_URL:-}
+      SCW_SECRET_KEY_LLM: ${SCW_SECRET_KEY_LLM:-}
+      SCW_LLM_MODEL: ${SCW_LLM_MODEL:-}
+      OPENAI_EMBEDDING_MODEL: ${OPENAI_EMBEDDING_MODEL:-bge-multilingual-gemma2}
+      GRAPHRAG_ROOT: /app/graphrag
+      GRAPHRAG_INPUT_DIR: /app/graphrag/input
+      GRAPHRAG_OUTPUT_DIR: /app/graphrag/output
+      GRAPHRAG_CACHE_DIR: /app/graphrag/cache
+      GRAPHRAG_CACHE_S3_ENABLED: ${GRAPHRAG_CACHE_S3_ENABLED:-false}
+      GRAPHRAG_CACHE_S3_BUCKET: ${GRAPHRAG_CACHE_S3_BUCKET:-}
+      GRAPHRAG_CACHE_S3_PREFIX: ${GRAPHRAG_CACHE_S3_PREFIX:-graphrag/cache}
+      GRAPHRAG_CACHE_S3_REGION: ${GRAPHRAG_CACHE_S3_REGION:-}
+      GRAPHRAG_CACHE_S3_ENDPOINT_URL: ${GRAPHRAG_CACHE_S3_ENDPOINT_URL:-}
+      GRAPHRAG_CACHE_S3_ACCESS_KEY_ID: ${GRAPHRAG_CACHE_S3_ACCESS_KEY_ID:-}
+      GRAPHRAG_CACHE_S3_SECRET_ACCESS_KEY: ${GRAPHRAG_CACHE_S3_SECRET_ACCESS_KEY:-}
+      GRAPHRAG_CACHE_S3_SESSION_TOKEN: ${GRAPHRAG_CACHE_S3_SESSION_TOKEN:-}
+    volumes:
+      - ./graphrag:/app/graphrag
+      - graphrag-cache:/app/graphrag/cache
+    ports:
+      - "${BRIDGE_PORT:-8081}:8081"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8081/healthz"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+  pipelines:
+    image: ${PIPELINES_IMAGE:-ghcr.io/open-webui/pipelines:main}
+    env_file:
+      - .env
+    environment:
+      PIPELINES_API_KEY: ${PIPELINES_API_KEY:-CHANGE_ME}
+    volumes:
+      - ./pipelines:/app/pipelines
+    depends_on:
+      bridge:
+        condition: service_healthy
+    ports:
+      - "${PIPELINES_PORT:-9099}:9099"
+
+  openwebui:
+    image: ${OPENWEBUI_IMAGE:-ghcr.io/open-webui/open-webui:main}
+    env_file:
+      - .env
+    environment:
+      ENV: ${OPENWEBUI_ENV:-prod}
+      WEBUI_SECRET_KEY: ${WEBUI_SECRET_KEY:-CHANGE_ME}
+      ENABLE_SIGNUP: "false"
+      ENABLE_LOGIN_FORM: "false"
+      ENABLE_OAUTH_SIGNUP: ${ENABLE_OAUTH_SIGNUP:-false}
+      OAUTH_MERGE_ACCOUNTS_BY_EMAIL: ${OAUTH_MERGE_ACCOUNTS_BY_EMAIL:-true}
+      OAUTH_PROVIDER_NAME: Keycloak
+      OPENID_PROVIDER_URL: http://host.docker.internal:${KEYCLOAK_PORT:-8082}/realms/openwebui/.well-known/openid-configuration
+      OAUTH_CLIENT_ID: openwebui
+      OAUTH_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:-CHANGE_ME}
+      OAUTH_SCOPES: openid profile email
+      OPENAI_API_BASE_URL: http://pipelines:9099/v1
+      OPENAI_API_KEY: ${PIPELINES_API_KEY:-CHANGE_ME}
+    volumes:
+      - ./openwebui/data:/app/backend/data
+    depends_on:
+      bridge:
+        condition: service_healthy
+      pipelines:
+        condition: service_started
+    ports:
+      - "${OPENWEBUI_PORT:-3000}:8080"
+
+  keycloak:
+    profiles: ["sso"]
+    image: quay.io/keycloak/keycloak:24.0
+    command:
+      - start-dev
+      - --import-realm
+      - --hostname-url=http://localhost:${KEYCLOAK_PORT:-8082}
+      - --hostname-strict=false
+    env_file:
+      - .env
+    environment:
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-CHANGE_ME}
+    volumes:
+      - ./keycloak/realm-openwebui.json:/opt/keycloak/data/import/realm-openwebui.json:ro
+    ports:
+      - "${KEYCLOAK_PORT:-8082}:8080"
+
+volumes:
+  graphrag-cache:

@@ -1,0 +1,2322 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Visualiseur GraphRAG</title>
+  <meta name="theme-color" content="#000091">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon-16x16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/apple-touch-icon.png">
+  <link rel="manifest" href="/assets/site.webmanifest">
+  <style>
+    :root {
+      --ui-scale: 0.5;
+      --text-scale: calc(var(--ui-scale) * 1.6);
+      --fr-blue: #000091;
+      --fr-blue-hover: #1212ff;
+      --fr-blue-soft: #eef1ff;
+      --fr-red: #c9191e;
+      --fr-red-soft: #ffe9e9;
+      --fr-bg: #f6f6f6;
+      --fr-panel: #ffffff;
+      --fr-panel-alt: #f9f9ff;
+      --fr-border: #dddddd;
+      --fr-border-strong: #c5c5dd;
+      --fr-ink: #161616;
+      --fr-muted: #666666;
+      --fr-focus: #0a76f6;
+      --fr-shadow: 0 10px 28px rgba(0, 0, 145, 0.08);
+      --fr-radius: 18px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      min-height: 100%;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Marianne", "Avenir Next", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+      color: var(--fr-ink);
+      background:
+        radial-gradient(circle at top left, rgba(0, 0, 145, 0.06), transparent 32%),
+        radial-gradient(circle at bottom right, rgba(201, 25, 30, 0.05), transparent 24%),
+        linear-gradient(180deg, #fbfbff, var(--fr-bg) 74%);
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, var(--fr-blue) 0 46%, #ffffff 46% 54%, var(--fr-red) 54% 100%);
+      z-index: 20;
+    }
+
+    .shell {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: minmax(290px, 360px) 1fr minmax(280px, 360px);
+      gap: calc(20px * var(--ui-scale));
+      padding: calc(24px * var(--ui-scale)) calc(20px * var(--ui-scale)) calc(20px * var(--ui-scale));
+    }
+
+    .panel {
+      position: relative;
+      background: var(--fr-panel);
+      border: 1px solid var(--fr-border);
+      border-radius: var(--fr-radius);
+      box-shadow: var(--fr-shadow);
+      overflow: hidden;
+    }
+
+    .panel::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: calc(5px * var(--ui-scale));
+      background: linear-gradient(90deg, var(--fr-blue), var(--fr-red));
+    }
+
+    .controls,
+    .details {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .section {
+      padding: calc(20px * var(--ui-scale)) calc(22px * var(--ui-scale));
+      border-bottom: 1px solid #ececfe;
+    }
+
+    .section:last-child {
+      border-bottom: 0;
+    }
+
+    h1, h2, h3, p {
+      margin: 0;
+    }
+
+    .eyebrow {
+      margin-bottom: calc(10px * var(--ui-scale));
+      color: var(--fr-blue);
+      font-size: calc(0.78rem * var(--text-scale));
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: calc(1.5rem * var(--ui-scale));
+      padding: calc(0.2rem * var(--ui-scale)) calc(0.55rem * var(--ui-scale));
+      border-radius: 999px;
+      background: var(--fr-blue-soft);
+      color: var(--fr-blue);
+      font-size: calc(0.78rem * var(--text-scale));
+      font-weight: 700;
+    }
+
+    .hero-intro {
+      display: grid;
+      grid-template-columns: minmax(calc(80px * var(--ui-scale)), min(calc(108px * var(--ui-scale)), 16vw)) 1fr;
+      align-items: center;
+      gap: calc(16px * var(--ui-scale));
+    }
+
+    .hero-visual {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      border-radius: calc(18px * var(--ui-scale));
+      overflow: hidden;
+      border: 1px solid #cfd7ff;
+      background: linear-gradient(145deg, #f2f5ff, #dfe6ff 40%, #f8f9ff);
+      box-shadow: 0 calc(10px * var(--ui-scale)) calc(24px * var(--ui-scale)) rgba(0, 0, 145, 0.12);
+    }
+
+    .hero-visual img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .hero-kicker {
+      margin: 0 0 6px;
+      color: var(--fr-blue);
+      font-size: calc(0.82rem * var(--text-scale));
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    h2 {
+      margin-bottom: calc(10px * var(--ui-scale));
+      color: var(--fr-blue);
+      font-size: calc(0.82rem * var(--text-scale));
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    h3 {
+      font-size: calc(1.25rem * var(--text-scale));
+      line-height: 1.2;
+    }
+
+    p, li, label, input, textarea, select, button, a, span {
+      font-size: calc(0.95rem * var(--text-scale));
+      line-height: 1.55;
+    }
+
+    .lede {
+      margin: 0;
+      color: var(--fr-muted);
+    }
+
+    .lede strong {
+      color: var(--fr-ink);
+      font-weight: 700;
+    }
+
+    .helper {
+      display: block;
+      color: var(--fr-muted);
+      font-size: calc(0.84rem * var(--text-scale));
+      margin-top: calc(4px * var(--ui-scale));
+    }
+
+    .question-helper-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: calc(10px * var(--ui-scale));
+      margin-top: calc(4px * var(--ui-scale));
+    }
+
+    .question-helper-row .helper {
+      margin-top: 0;
+      flex: 1 1 auto;
+    }
+
+    .field-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: calc(10px * var(--ui-scale));
+      flex-wrap: wrap;
+    }
+
+    .badge.subtle {
+      background: #f5f5fe;
+      color: var(--fr-blue);
+      border: 1px solid #dedeff;
+    }
+
+    .badge.disabled {
+      background: #f6f6f6;
+      color: var(--fr-muted);
+      border: 1px solid var(--fr-border);
+    }
+
+    .grid {
+      display: grid;
+      gap: calc(14px * var(--ui-scale));
+    }
+
+    .field {
+      display: grid;
+      gap: calc(8px * var(--ui-scale));
+    }
+
+    .field.is-muted {
+      opacity: 0.56;
+    }
+
+    .field.is-muted label,
+    .field.is-muted .helper {
+      color: #7b7b7b;
+    }
+
+    .field.is-muted select {
+      background: #f4f4f4;
+      color: #7b7b7b;
+      border-bottom-color: #c5c5dd;
+      cursor: not-allowed;
+    }
+
+    label {
+      font-weight: 600;
+      color: var(--fr-ink);
+    }
+
+    input,
+    textarea,
+    select,
+    button {
+      width: 100%;
+      min-height: calc(3rem * var(--ui-scale));
+      padding: calc(0.8rem * var(--ui-scale)) calc(0.95rem * var(--ui-scale));
+      border-radius: calc(12px * var(--ui-scale));
+      font: inherit;
+    }
+
+    input,
+    textarea,
+    select {
+      border: 1px solid var(--fr-border);
+      border-bottom: 3px solid var(--fr-blue);
+      background: #ffffff;
+      color: var(--fr-ink);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
+    }
+
+    textarea {
+      min-height: calc(7.5rem * var(--ui-scale));
+      resize: vertical;
+      overflow: hidden;
+    }
+
+    input::placeholder,
+    textarea::placeholder {
+      color: #7b7b7b;
+    }
+
+    button {
+      cursor: pointer;
+      border: 1px solid var(--fr-blue);
+      background: var(--fr-blue);
+      color: #ffffff;
+      font-weight: 700;
+      transition: background-color 120ms ease, border-color 120ms ease, transform 120ms ease;
+    }
+
+    button:hover {
+      background: var(--fr-blue-hover);
+      border-color: var(--fr-blue-hover);
+    }
+
+    button.secondary {
+      background: #ffffff;
+      color: var(--fr-blue);
+      border-color: var(--fr-blue);
+    }
+
+    button.secondary:hover {
+      background: var(--fr-blue-soft);
+      color: var(--fr-blue-hover);
+      border-color: var(--fr-blue-hover);
+    }
+
+    input:focus-visible,
+    textarea:focus-visible,
+    select:focus-visible,
+    button:focus-visible,
+    a:focus-visible {
+      outline: 3px solid var(--fr-focus);
+      outline-offset: 2px;
+    }
+
+    button:active {
+      transform: translateY(1px);
+    }
+
+    .actions {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(calc(180px * var(--ui-scale)), 1fr));
+      gap: calc(10px * var(--ui-scale));
+    }
+
+    .actions .compact-action {
+      width: auto;
+      min-height: calc(2rem * var(--ui-scale));
+      padding: calc(0.3rem * var(--ui-scale)) calc(0.65rem * var(--ui-scale));
+      font-size: calc(0.78rem * var(--text-scale));
+      font-weight: 600;
+      justify-self: start;
+      border-color: #d6daf7;
+      background: #f8f8ff;
+      color: var(--fr-blue);
+    }
+
+    .actions .compact-action:hover {
+      background: var(--fr-blue-soft);
+      border-color: #c3c8f2;
+      color: var(--fr-blue-hover);
+    }
+
+    .question-action-bar {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: calc(6px * var(--ui-scale));
+    }
+
+    .icon-action {
+      position: relative;
+      width: calc(2.15rem * var(--ui-scale));
+      min-width: calc(2.15rem * var(--ui-scale));
+      min-height: calc(2.15rem * var(--ui-scale));
+      padding: calc(0.25rem * var(--ui-scale));
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 999px;
+      border-color: #d6daf7;
+      background: #f8f8ff;
+      color: var(--fr-blue);
+      box-shadow: 0 calc(2px * var(--ui-scale)) calc(6px * var(--ui-scale)) rgba(0, 0, 145, 0.08);
+    }
+
+    .icon-action:hover {
+      background: var(--fr-blue-soft);
+      border-color: #c3c8f2;
+      color: var(--fr-blue-hover);
+    }
+
+    .icon-action svg {
+      width: calc(1rem * var(--text-scale));
+      height: calc(1rem * var(--text-scale));
+      display: block;
+    }
+
+    .icon-action::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      right: 0;
+      bottom: calc(100% + (6px * var(--ui-scale)));
+      padding: calc(0.28rem * var(--ui-scale)) calc(0.55rem * var(--ui-scale));
+      border-radius: calc(8px * var(--ui-scale));
+      background: rgba(22, 22, 68, 0.96);
+      color: #ffffff;
+      font-size: calc(0.72rem * var(--text-scale));
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(calc(4px * var(--ui-scale)));
+      transition: opacity 120ms ease, transform 120ms ease;
+      z-index: 20;
+    }
+
+    .icon-action:hover::after,
+    .icon-action:focus-visible::after {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: calc(10px * var(--ui-scale));
+    }
+
+    .stat {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: calc(10px * var(--ui-scale));
+      padding: calc(14px * var(--ui-scale));
+      border-radius: calc(16px * var(--ui-scale));
+      background: var(--fr-panel-alt);
+      border: 1px solid #dedeff;
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.7);
+    }
+
+    .stat span {
+      color: var(--fr-muted);
+      font-size: calc(0.86rem * var(--text-scale));
+    }
+
+    .stat strong {
+      color: var(--fr-blue);
+      font-size: calc(1.45rem * var(--text-scale));
+      line-height: 1;
+      white-space: nowrap;
+    }
+
+    .viewer {
+      position: relative;
+      min-height: 78vh;
+      background:
+        linear-gradient(90deg, rgba(0, 0, 145, 0.035) 1px, transparent 1px),
+        linear-gradient(rgba(0, 0, 145, 0.035) 1px, transparent 1px),
+        radial-gradient(circle at top, rgba(0, 0, 145, 0.06), transparent 34%),
+        linear-gradient(180deg, #ffffff, #f7f7ff 72%);
+      background-size: 32px 32px, 32px 32px, auto, auto;
+      border: 1px solid var(--fr-border);
+      border-radius: var(--fr-radius);
+      box-shadow: var(--fr-shadow);
+      overflow: hidden;
+    }
+
+    #cy {
+      width: 100%;
+      height: 100%;
+      min-height: 78vh;
+    }
+
+    .overlay {
+      position: absolute;
+      top: calc(18px * var(--ui-scale));
+      left: calc(18px * var(--ui-scale));
+      right: calc(18px * var(--ui-scale));
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: calc(12px * var(--ui-scale));
+      pointer-events: none;
+      z-index: 5;
+    }
+
+    .overlay-card {
+      max-width: calc(440px * var(--ui-scale));
+      padding: calc(14px * var(--ui-scale)) calc(16px * var(--ui-scale));
+      border-radius: calc(14px * var(--ui-scale));
+      background: rgba(255, 255, 255, 0.96);
+      border: 1px solid var(--fr-border);
+      border-left: calc(5px * var(--ui-scale)) solid var(--fr-blue);
+      color: var(--fr-muted);
+      box-shadow: 0 calc(8px * var(--ui-scale)) calc(24px * var(--ui-scale)) rgba(0, 0, 145, 0.08);
+      pointer-events: auto;
+    }
+
+    .overlay-card strong {
+      display: block;
+      margin-bottom: calc(4px * var(--ui-scale));
+      color: var(--fr-ink);
+    }
+
+    .overlay-card.error {
+      border-left-color: var(--fr-red);
+      background: #fff8f7;
+    }
+
+    .overlay-chip {
+      align-self: flex-start;
+      display: inline-flex;
+      align-items: center;
+      min-height: 0;
+      max-width: 100%;
+      padding: calc(0.18rem * var(--ui-scale)) 20px;
+      border-radius: calc(8px * var(--ui-scale));
+      background: rgba(255, 255, 255, 0.95);
+      border: 1px solid var(--fr-border);
+      color: var(--fr-blue);
+      font-size: calc(0.82rem * var(--text-scale));
+      font-weight: 700;
+      line-height: 1.2;
+      box-shadow: 0 calc(8px * var(--ui-scale)) calc(24px * var(--ui-scale)) rgba(0, 0, 145, 0.08);
+      pointer-events: auto;
+    }
+
+    .meta {
+      margin-bottom: calc(12px * var(--ui-scale));
+      color: var(--fr-muted);
+    }
+
+    .list {
+      margin: calc(10px * var(--ui-scale)) 0 0;
+      padding-left: calc(18px * var(--ui-scale));
+      color: var(--fr-muted);
+    }
+
+    .legend {
+      display: grid;
+      gap: calc(8px * var(--ui-scale));
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: calc(8px * var(--ui-scale));
+      color: var(--fr-muted);
+    }
+
+    .swatch {
+      width: calc(12px * var(--ui-scale));
+      height: calc(12px * var(--ui-scale));
+      border-radius: 999px;
+      display: inline-block;
+      box-shadow: 0 0 0 2px #ffffff, 0 0 0 3px rgba(0, 0, 145, 0.12);
+    }
+
+    .empty {
+      color: var(--fr-muted);
+    }
+
+    .details-body {
+      max-height: calc(100vh - 280px);
+      overflow: auto;
+      padding-right: 4px;
+    }
+
+    .details-body p + p {
+      margin-top: calc(10px * var(--ui-scale));
+    }
+
+    .timeline-guide {
+      position: absolute;
+      inset: 0;
+      z-index: 4;
+      pointer-events: none;
+      display: none;
+    }
+
+    .timeline-guide.visible {
+      display: block;
+    }
+
+    .timeline-guide.vertical {
+      right: 0;
+      left: auto;
+      width: 110px;
+    }
+
+    .timeline-guide.horizontal {
+      position: fixed;
+      left: 0;
+      right: auto;
+      top: auto;
+      bottom: 12px;
+      height: 104px;
+      width: 0;
+      z-index: 24;
+    }
+
+    .timeline-guide__rail {
+      position: absolute;
+      border-color: rgba(0, 0, 145, 0.2);
+    }
+
+    .timeline-guide.vertical .timeline-guide__rail {
+      top: 92px;
+      bottom: 22px;
+      left: 40px;
+      border-left: 2px solid rgba(0, 0, 145, 0.2);
+    }
+
+    .timeline-guide.horizontal .timeline-guide__rail {
+      left: 24px;
+      right: 24px;
+      top: auto;
+      bottom: 30px;
+      border-top: 2px solid rgba(0, 0, 145, 0.2);
+    }
+
+    .timeline-guide__label {
+      position: absolute;
+      color: var(--fr-blue);
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      white-space: nowrap;
+      background: rgba(255, 255, 255, 0.94);
+      padding: 0 4px;
+    }
+
+    .timeline-guide.vertical .timeline-guide__label.start {
+      top: 74px;
+      left: 2px;
+    }
+
+    .timeline-guide.vertical .timeline-guide__label.end {
+      bottom: 4px;
+      left: 2px;
+    }
+
+    .timeline-guide.horizontal .timeline-guide__label.start {
+      top: auto;
+      bottom: 52px;
+      left: 16px;
+    }
+
+    .timeline-guide.horizontal .timeline-guide__label.end {
+      top: auto;
+      bottom: 52px;
+      right: 16px;
+    }
+
+    .timeline-guide__ticks {
+      position: absolute;
+      inset: 0;
+    }
+
+    .timeline-tick {
+      position: absolute;
+      color: var(--fr-muted);
+      font-size: 0.78rem;
+      font-weight: 600;
+    }
+
+    .timeline-tick.vertical {
+      left: 34px;
+      width: 12px;
+      height: 2px;
+      background: rgba(0, 0, 145, 0.35);
+    }
+
+    .timeline-tick.vertical span {
+      position: absolute;
+      left: -32px;
+      top: -9px;
+      background: rgba(255, 255, 255, 0.92);
+      padding: 0 4px;
+    }
+
+    .timeline-tick.horizontal {
+      top: auto;
+      bottom: 24px;
+      width: 2px;
+      height: 12px;
+      background: rgba(0, 0, 145, 0.35);
+      transform: translateX(-50%);
+    }
+
+    .timeline-tick.horizontal span {
+      position: absolute;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(255, 255, 255, 0.92);
+      padding: 0 4px;
+    }
+
+    a {
+      color: var(--fr-blue);
+      text-decoration: underline;
+      text-underline-offset: 0.14em;
+    }
+
+    .download-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 600;
+    }
+
+    .download-link::before {
+      content: "↓";
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      width: 1.5rem;
+      height: 1.5rem;
+      border-radius: 999px;
+      background: var(--fr-blue-soft);
+      color: var(--fr-blue);
+      font-size: 0.92rem;
+    }
+
+    @media (max-width: 1180px) {
+      .shell {
+        grid-template-columns: 1fr;
+      }
+
+      .viewer,
+      #cy {
+        min-height: 62vh;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .shell {
+        padding: calc(18px * var(--ui-scale)) calc(12px * var(--ui-scale)) calc(12px * var(--ui-scale));
+      }
+
+      .hero-intro {
+        grid-template-columns: 1fr;
+        align-items: start;
+      }
+
+      .question-helper-row {
+        align-items: flex-start;
+      }
+
+      .hero-visual {
+        max-width: calc(96px * var(--ui-scale));
+      }
+
+      .section {
+        padding: calc(18px * var(--ui-scale)) calc(16px * var(--ui-scale));
+      }
+
+      .actions,
+      .stats {
+        grid-template-columns: 1fr;
+      }
+
+      .overlay {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <aside class="panel controls">
+      <div class="section">
+        <div class="hero-intro">
+          <div class="hero-visual" aria-hidden="true">
+            <img src="/assets/mirai-graphrag-256.png" srcset="/assets/mirai-graphrag-256.png 1x, /assets/mirai-graphrag-512.png 2x, /assets/mirai-graphrag.png 4x" width="256" height="256" alt="" loading="eager" decoding="async">
+          </div>
+          <p class="lede"><strong>MirAI</strong> vous permet de visualiser votre corpus sous forme de graphes. Explorez les liens, changez de mode de lecture et repérez rapidement les éléments clés ou les repères temporels.</p>
+        </div>
+      </div>
+
+      <div class="section grid">
+        <div class="field">
+          <label for="query">Votre question</label>
+          <textarea id="query" name="query" rows="4" placeholder="Compare le traité de Brétigny et le traité de Troyes"></textarea>
+          <div class="question-helper-row">
+            <span class="helper">Modifiez la question directement ici. Le bouton de relance ouvre Open WebUI avec cette question préremplie.</span>
+            <div class="question-action-bar">
+              <button
+                id="openWebuiButton"
+                class="secondary icon-action"
+                type="button"
+                title="Relancer dans le chat"
+                data-tooltip="Relancer dans le chat"
+                aria-label="Relancer dans le chat">
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <path fill="currentColor" d="M12 5a7 7 0 1 1-6.64 9.2 1 1 0 1 1 1.9-.62A5 5 0 1 0 8.2 8.22H11a1 1 0 1 1 0 2H5.5A1.5 1.5 0 0 1 4 8.72V3.5a1 1 0 1 1 2 0v2.81A6.97 6.97 0 0 1 12 5Z" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="source">Jeu de documents</label>
+          <select id="source" name="source"></select>
+        </div>
+
+        <div class="field">
+          <label for="maxNodes">Nombre d'éléments affichés</label>
+          <input id="maxNodes" name="maxNodes" type="number" min="10" max="200" step="5" value="80">
+        </div>
+
+        <div class="field">
+          <label for="minWeight">Seuil de pertinence des liens</label>
+          <input id="minWeight" name="minWeight" type="number" min="0" max="100" step="0.5" value="1">
+        </div>
+
+        <div class="field">
+          <div class="field-head">
+            <label for="layoutMode">Mode de lecture</label>
+            <span id="layoutBadge" class="badge subtle">Recommandé</span>
+          </div>
+          <select id="layoutMode" name="layoutMode">
+            <option value="auto">Recommandé</option>
+            <option value="relation">Vue relationnelle</option>
+            <option value="timeline">Vue chronologique</option>
+            <option value="focus">Vue centrée</option>
+            <option value="overview">Vue d'ensemble</option>
+            <option value="compact">Vue compacte</option>
+          </select>
+          <span id="layoutHint" class="helper">Le mode recommandé s'adapte automatiquement à la structure du sous-graphe.</span>
+        </div>
+
+        <div id="timelineOrientationField" class="field is-muted">
+          <label for="timelineOrientation">Axe chronologique</label>
+          <select id="timelineOrientation" name="timelineOrientation">
+            <option value="vertical">Vertical</option>
+            <option value="horizontal">Horizontal</option>
+          </select>
+          <span id="timelineOrientationHint" class="helper">Utilisé uniquement quand la vue chronologique est applicable.</span>
+        </div>
+
+        <div class="actions">
+          <button id="applyButton" type="button">Actualiser</button>
+          <button id="fitButton" class="secondary" type="button">Recentrer</button>
+        </div>
+      </div>
+
+      <div class="section">
+        <h2>Indicateurs</h2>
+        <div class="stats">
+          <div class="stat">
+            <span>Entités</span>
+            <strong id="nodeCount">0</strong>
+          </div>
+          <div class="stat">
+            <span>Liens</span>
+            <strong id="edgeCount">0</strong>
+          </div>
+        </div>
+        <p id="statusMessage" class="lede" style="margin-top:12px;">Chargement de la visualisation...</p>
+      </div>
+
+      <div class="section">
+        <h2>Utilisation</h2>
+        <ul class="list">
+          <li>Faites glisser un élément pour le garder en évidence pendant votre lecture.</li>
+          <li>Zoomez ou dézoomez librement dans le graphe.</li>
+          <li>Cliquez sur une entité ou un lien pour afficher ses détails et ses sources.</li>
+          <li>Utilisez le bouton de recentrage pour revenir rapidement à une vue globale.</li>
+        </ul>
+      </div>
+
+      <div class="section">
+        <h2>Export</h2>
+        <p><a id="downloadLink" class="download-link" href="/graph/raw" target="_blank" rel="noreferrer">Télécharger le fichier du graphe</a></p>
+      </div>
+    </aside>
+
+    <main class="viewer">
+      <div class="overlay">
+        <div id="overlayCard" class="overlay-card">
+          <strong id="overlayTitle">Chargement...</strong>
+          <span id="overlayText">Préparation de la visualisation.</span>
+        </div>
+        <div id="overlayChip" class="overlay-chip">Aucune donnée</div>
+      </div>
+      <div id="timelineGuideVertical" class="timeline-guide vertical" aria-hidden="true">
+        <div id="timelineRailVertical" class="timeline-guide__rail"></div>
+        <span id="timelineLabelVerticalStart" class="timeline-guide__label start">Plus ancien</span>
+        <span id="timelineLabelVerticalEnd" class="timeline-guide__label end">Plus récent</span>
+        <div id="timelineTicksVertical" class="timeline-guide__ticks"></div>
+      </div>
+      <div id="cy"></div>
+    </main>
+
+    <aside class="panel details">
+      <div class="section">
+        <h2>Détail</h2>
+        <h3 id="detailsTitle">Aucun élément sélectionné</h3>
+        <p id="detailsMeta" class="meta">Cliquez sur un élément du graphe.</p>
+        <div id="detailsBody" class="details-body">
+          <p class="empty">Le panneau de droite affiche les informations détaillées et les sources associées à l'élément sélectionné.</p>
+        </div>
+      </div>
+      <div class="section">
+        <h2>Repères visuels</h2>
+        <div id="legend" class="legend"></div>
+      </div>
+    </aside>
+  </div>
+
+  <div id="timelineGuideHorizontal" class="timeline-guide horizontal" aria-hidden="true">
+    <div id="timelineRailHorizontal" class="timeline-guide__rail"></div>
+    <span id="timelineLabelHorizontalStart" class="timeline-guide__label start">Plus ancien</span>
+    <span id="timelineLabelHorizontalEnd" class="timeline-guide__label end">Plus récent</span>
+    <div id="timelineTicksHorizontal" class="timeline-guide__ticks"></div>
+  </div>
+
+  <script>
+    window.GRAPH_VIEWER_CONFIG = __GRAPH_VIEWER_CONFIG__;
+  </script>
+  <script>
+    const CYTOSCAPE_CDN_URLS = [
+      "https://cdn.jsdelivr.net/npm/cytoscape@3.28.1/dist/cytoscape.min.js",
+      "https://unpkg.com/cytoscape@3.28.1/dist/cytoscape.min.js"
+    ];
+    const DEFAULT_OPENWEBUI_URL = "http://localhost:3000";
+
+    const viewerConfig = window.GRAPH_VIEWER_CONFIG || {};
+    const queryInput = document.getElementById("query");
+    const sourceSelect = document.getElementById("source");
+    const maxNodesInput = document.getElementById("maxNodes");
+    const minWeightInput = document.getElementById("minWeight");
+    const layoutModeSelect = document.getElementById("layoutMode");
+    const layoutBadge = document.getElementById("layoutBadge");
+    const layoutHint = document.getElementById("layoutHint");
+    const timelineOrientationField = document.getElementById("timelineOrientationField");
+    const timelineOrientationSelect = document.getElementById("timelineOrientation");
+    const timelineOrientationHint = document.getElementById("timelineOrientationHint");
+    const applyButton = document.getElementById("applyButton");
+    const fitButton = document.getElementById("fitButton");
+    const openWebuiButton = document.getElementById("openWebuiButton");
+    const nodeCount = document.getElementById("nodeCount");
+    const edgeCount = document.getElementById("edgeCount");
+    const statusMessage = document.getElementById("statusMessage");
+    const overlayCard = document.getElementById("overlayCard");
+    const overlayTitle = document.getElementById("overlayTitle");
+    const overlayText = document.getElementById("overlayText");
+    const overlayChip = document.getElementById("overlayChip");
+    const detailsTitle = document.getElementById("detailsTitle");
+    const detailsMeta = document.getElementById("detailsMeta");
+    const detailsBody = document.getElementById("detailsBody");
+    const legend = document.getElementById("legend");
+    const downloadLink = document.getElementById("downloadLink");
+    const timelineGuideVertical = document.getElementById("timelineGuideVertical");
+    const timelineGuideHorizontal = document.getElementById("timelineGuideHorizontal");
+    const timelineRailVertical = document.getElementById("timelineRailVertical");
+    const timelineRailHorizontal = document.getElementById("timelineRailHorizontal");
+    const timelineLabelVerticalStart = document.getElementById("timelineLabelVerticalStart");
+    const timelineLabelVerticalEnd = document.getElementById("timelineLabelVerticalEnd");
+    const timelineLabelHorizontalStart = document.getElementById("timelineLabelHorizontalStart");
+    const timelineLabelHorizontalEnd = document.getElementById("timelineLabelHorizontalEnd");
+    const timelineTicksVertical = document.getElementById("timelineTicksVertical");
+    const timelineTicksHorizontal = document.getElementById("timelineTicksHorizontal");
+
+    let keycloak = null;
+    let accessToken = "";
+    let cy = null;
+    let currentGraphData = null;
+    let currentTimelineMeta = null;
+    let currentAppliedMode = null;
+    let currentTimelineLayoutMeta = null;
+
+    const VIEW_MODE_LABELS = {
+      auto: "Recommandé",
+      relation: "Vue relationnelle",
+      timeline: "Vue chronologique",
+      focus: "Vue centrée",
+      overview: "Vue d'ensemble",
+      compact: "Vue compacte",
+    };
+
+    function normalizeSourceGroup(value) {
+      const raw = String(value || "").trim();
+      if (!raw) {
+        return "isolated";
+      }
+      const lowered = raw.toLowerCase();
+      if (lowered === "unknown" || lowered === "inconnu" || lowered === "isolated") {
+        return "isolated";
+      }
+      return raw;
+    }
+
+    function sourceLabel(id) {
+      if (!id) return "Tous les documents";
+      const group = normalizeSourceGroup(id);
+      if (group === "__root__") return "Documents à la racine";
+      if (group === "isolated") return "Isolé";
+      return group;
+    }
+
+    function hslToHex(h, s, l) {
+      const saturation = s / 100;
+      const lightness = l / 100;
+      const chroma = (1 - Math.abs((2 * lightness) - 1)) * saturation;
+      const segment = h / 60;
+      const second = chroma * (1 - Math.abs((segment % 2) - 1));
+      let red = 0;
+      let green = 0;
+      let blue = 0;
+
+      if (segment >= 0 && segment < 1) {
+        red = chroma;
+        green = second;
+      } else if (segment < 2) {
+        red = second;
+        green = chroma;
+      } else if (segment < 3) {
+        green = chroma;
+        blue = second;
+      } else if (segment < 4) {
+        green = second;
+        blue = chroma;
+      } else if (segment < 5) {
+        red = second;
+        blue = chroma;
+      } else {
+        red = chroma;
+        blue = second;
+      }
+
+      const match = lightness - (chroma / 2);
+      const toHex = (value) => Math.round((value + match) * 255).toString(16).padStart(2, "0");
+      return `#${toHex(red)}${toHex(green)}${toHex(blue)}`;
+    }
+
+    function sourceColor(value) {
+      const group = normalizeSourceGroup(value);
+      if (group === "isolated") {
+        return "#8f8f98";
+      }
+      if (group === "__root__") {
+        return "#6a6af4";
+      }
+
+      let hash = 0;
+      const safe = group;
+      for (let index = 0; index < safe.length; index += 1) {
+        hash = safe.charCodeAt(index) + ((hash << 5) - hash);
+      }
+      const hue = Math.abs(hash) % 360;
+      return hslToHex(hue, 64, 46);
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+    }
+
+    function formatText(value) {
+      return escapeHtml(value || "").replaceAll("\n", "<br>");
+    }
+
+    function clamp(value, min, max) {
+      return Math.min(max, Math.max(min, value));
+    }
+
+    function getViewportInsets() {
+      const container = cy?.container?.();
+      const width = container?.clientWidth || 0;
+      const height = container?.clientHeight || 0;
+      const overlayHeight = overlayCard?.offsetHeight || 0;
+      const overlayChipHeight = overlayChip?.offsetHeight || 0;
+      const hasHorizontalTimeline = currentAppliedMode === "timeline"
+        && currentTimelineLayoutMeta?.orientation === "horizontal";
+      const horizontalTimelineInset = hasHorizontalTimeline ? 132 : 28;
+      const topInset = clamp(Math.max(40, overlayHeight + 40, overlayChipHeight + 36), 40, Math.max(40, height * 0.24));
+      const sideInset = clamp(width * 0.07, 30, 96);
+      return {
+        top: topInset,
+        right: sideInset,
+        bottom: horizontalTimelineInset,
+        left: sideInset,
+      };
+    }
+
+    function getVisibleContainerFrame() {
+      const container = cy?.container?.();
+      if (!container) {
+        return null;
+      }
+
+      const rect = container.getBoundingClientRect();
+      const visualViewport = window.visualViewport || null;
+      const viewportTop = visualViewport?.offsetTop || 0;
+      const viewportLeft = visualViewport?.offsetLeft || 0;
+      const viewportWidth = visualViewport?.width || window.innerWidth || document.documentElement.clientWidth || rect.width;
+      const viewportHeight = visualViewport?.height || window.innerHeight || document.documentElement.clientHeight || rect.height;
+      const viewportRight = viewportLeft + viewportWidth;
+      const viewportBottom = viewportTop + viewportHeight;
+
+      const visibleTop = clamp(viewportTop - rect.top, 0, rect.height);
+      const visibleBottom = clamp(viewportBottom - rect.top, 0, rect.height);
+      const visibleLeft = clamp(viewportLeft - rect.left, 0, rect.width);
+      const visibleRight = clamp(viewportRight - rect.left, 0, rect.width);
+
+      return {
+        top: visibleTop,
+        bottom: visibleBottom,
+        left: visibleLeft,
+        right: visibleRight,
+        width: Math.max(0, visibleRight - visibleLeft),
+        height: Math.max(0, visibleBottom - visibleTop),
+      };
+    }
+
+    function focusGraphInViewport(animate = false) {
+      if (!cy) {
+        return;
+      }
+
+      const elements = cy.elements();
+      if (!elements.length) {
+        return;
+      }
+
+      const container = cy.container();
+      if (!container) {
+        return;
+      }
+
+      const width = container.clientWidth;
+      const height = container.clientHeight;
+      if (!width || !height) {
+        return;
+      }
+
+      const insets = getViewportInsets();
+      const visibleFrame = getVisibleContainerFrame();
+      const visibleWidth = visibleFrame?.width || width;
+      const visibleHeight = visibleFrame?.height || height;
+      const verticalInsetCap = Math.max(20, (visibleHeight - 80) / 2);
+      const horizontalInsetCap = Math.max(20, (visibleWidth - 80) / 2);
+      const effectiveInsets = {
+        top: clamp(insets.top, 20, verticalInsetCap),
+        right: clamp(insets.right, 20, horizontalInsetCap),
+        bottom: clamp(insets.bottom, 20, verticalInsetCap),
+        left: clamp(insets.left, 20, horizontalInsetCap),
+      };
+      const frameLeft = visibleFrame ? visibleFrame.left : 0;
+      const frameTop = visibleFrame ? visibleFrame.top : 0;
+      const frameWidth = Math.max(80, visibleWidth);
+      const frameHeight = Math.max(80, visibleHeight);
+      const availableWidth = Math.max(80, frameWidth - effectiveInsets.left - effectiveInsets.right);
+      const availableHeight = Math.max(80, frameHeight - effectiveInsets.top - effectiveInsets.bottom);
+      const boundingBox = elements.boundingBox({
+        includeLabels: true,
+        includeOverlays: false,
+      });
+
+      if (!Number.isFinite(boundingBox.w) || !Number.isFinite(boundingBox.h) || boundingBox.w <= 0 || boundingBox.h <= 0) {
+        cy.fit(elements, 46);
+        renderTimelineGuide();
+        return;
+      }
+
+      const fitZoom = Math.min(
+        availableWidth / Math.max(1, boundingBox.w),
+        availableHeight / Math.max(1, boundingBox.h),
+      ) * 0.94;
+      const zoom = clamp(fitZoom, cy.minZoom(), cy.maxZoom());
+      const graphCenterX = (boundingBox.x1 + boundingBox.x2) / 2;
+      const graphCenterY = (boundingBox.y1 + boundingBox.y2) / 2;
+      const viewportCenterX = frameLeft + effectiveInsets.left + (availableWidth / 2);
+      const viewportCenterY = frameTop + effectiveInsets.top + (availableHeight / 2);
+      const pan = {
+        x: viewportCenterX - (graphCenterX * zoom),
+        y: viewportCenterY - (graphCenterY * zoom),
+      };
+
+      if (animate) {
+        cy.animate({
+          zoom,
+          pan,
+          duration: 260,
+          easing: "ease-out-cubic",
+        }, {
+          complete: () => {
+            renderTimelineGuide();
+          },
+        });
+        return;
+      }
+
+      cy.viewport({
+        zoom,
+        pan,
+      });
+      renderTimelineGuide();
+    }
+
+    function authHeaders() {
+      return accessToken ? { Authorization: `Bearer ${accessToken}` } : {};
+    }
+
+    function setOverlayState(title, text, isError = false) {
+      overlayTitle.textContent = title;
+      overlayText.textContent = text;
+      overlayCard.classList.toggle("error", isError);
+      statusMessage.textContent = text;
+    }
+
+    function setChip(text) {
+      overlayChip.textContent = text;
+    }
+
+    function resizeQueryInput() {
+      queryInput.style.height = "auto";
+      queryInput.style.height = `${Math.max(queryInput.scrollHeight, 120)}px`;
+    }
+
+    function syncQuestionField() {
+      resizeQueryInput();
+      openWebuiButton.disabled = !queryInput.value.trim();
+    }
+
+    async function copyTextToClipboard(value) {
+      const text = String(value || "");
+      if (!text) {
+        return false;
+      }
+
+      try {
+        if (navigator.clipboard?.writeText && (window.isSecureContext || window.location.hostname === "localhost")) {
+          await navigator.clipboard.writeText(text);
+          return true;
+        }
+      } catch (error) {
+        console.warn("Clipboard API unavailable", error);
+      }
+
+      try {
+        const fallback = document.createElement("textarea");
+        fallback.value = text;
+        fallback.setAttribute("readonly", "readonly");
+        fallback.style.position = "fixed";
+        fallback.style.top = "-1000px";
+        fallback.style.opacity = "0";
+        document.body.appendChild(fallback);
+        fallback.focus();
+        fallback.select();
+        fallback.setSelectionRange(0, fallback.value.length);
+        const copied = document.execCommand("copy");
+        fallback.remove();
+        return copied;
+      } catch (error) {
+        console.warn("Legacy clipboard copy unavailable", error);
+        return false;
+      }
+    }
+
+    function getOpenWebuiUrl() {
+      const configured = String(viewerConfig.openwebui_url || "").trim();
+      return configured || DEFAULT_OPENWEBUI_URL;
+    }
+
+    function buildOpenWebuiQuestionUrl(question) {
+      try {
+        const target = new URL(getOpenWebuiUrl());
+        target.searchParams.set("q", question);
+        return target.toString();
+      } catch (error) {
+        console.warn("Open WebUI URL could not be parsed", error);
+        return `${DEFAULT_OPENWEBUI_URL}/?q=${encodeURIComponent(question)}`;
+      }
+    }
+
+    async function relaunchInOpenWebUi() {
+      const question = queryInput.value.trim();
+      if (!question) {
+        queryInput.focus();
+        setOverlayState("Question requise", "Saisissez ou modifiez une question avant de la relancer dans Open WebUI.", true);
+        return;
+      }
+
+      const copied = await copyTextToClipboard(question);
+      const targetUrl = buildOpenWebuiQuestionUrl(question);
+      const openedWindow = window.open(targetUrl, "_blank", "noopener,noreferrer");
+
+      if (!openedWindow) {
+        setOverlayState(
+          "Ouverture bloquée",
+          "Le navigateur a bloqué l'ouverture d'Open WebUI. Autorisez les pop-ups puis réessayez.",
+          true
+        );
+        setChip("Relance bloquée");
+        return;
+      }
+
+      if (copied) {
+        setOverlayState(
+          "Question prête",
+          "Open WebUI a été ouvert dans un nouvel onglet avec la question préremplie. Elle a aussi été copiée en secours."
+        );
+      } else {
+        setOverlayState(
+          "Question prête",
+          "Open WebUI a été ouvert dans un nouvel onglet avec la question préremplie."
+        );
+      }
+      setChip("Relance vers Open WebUI");
+    }
+
+    function setEmptyDetails() {
+      detailsTitle.textContent = "Aucun élément sélectionné";
+      detailsMeta.textContent = "Cliquez sur un élément du graphe.";
+      detailsBody.innerHTML = '<p class="empty">Le panneau de droite affiche les informations détaillées et les sources associées à l\'élément sélectionné.</p>';
+    }
+
+    function renderDocuments(documentPaths, emptyLabel) {
+      if (!documentPaths || !documentPaths.length) {
+        return `<p class="empty">${escapeHtml(emptyLabel)}</p>`;
+      }
+      return `<ul class="list">${documentPaths.map((path) => `<li>${escapeHtml(path)}</li>`).join("")}</ul>`;
+    }
+
+    function setNodeDetails(nodeData) {
+      detailsTitle.textContent = nodeData.label || nodeData.id || "Entité";
+      const metaParts = [
+        nodeData.entity_type || "Entité",
+        `degré ${nodeData.degree ?? 0}`,
+        sourceLabel(nodeData.source_group),
+      ];
+      if (nodeData.timeline_year) {
+        metaParts.push(`année estimée ${nodeData.timeline_year}`);
+      }
+      detailsMeta.textContent = metaParts.join(" · ");
+      detailsBody.innerHTML = `
+        <p>${formatText(nodeData.description || "Aucune description d'entité n'a été extraite.")}</p>
+        <h2 style="margin-top:14px;">Sources associées</h2>
+        ${renderDocuments(nodeData.document_paths, "Aucune source n'est rattachée à cette entité.")}
+      `;
+    }
+
+    function setEdgeDetails(edgeData) {
+      detailsTitle.textContent = `${edgeData.source} → ${edgeData.target}`;
+      detailsMeta.textContent = `poids ${Number(edgeData.weight || 0).toFixed(1)}`;
+      detailsBody.innerHTML = `
+        <p>${formatText(edgeData.description || "Aucune description de lien n'a été extraite.")}</p>
+        <h2 style="margin-top:14px;">Sources associées</h2>
+        ${renderDocuments(edgeData.document_paths, "Aucune source n'est rattachée à ce lien.")}
+      `;
+    }
+
+    function populateSources(options, selectedId) {
+      sourceSelect.innerHTML = "";
+      options.forEach((option) => {
+        const element = document.createElement("option");
+        element.value = option.id;
+        element.textContent = option.label;
+        if (option.id === selectedId) {
+          element.selected = true;
+        }
+        sourceSelect.appendChild(element);
+      });
+    }
+
+    function populateLegend(nodes) {
+      const groups = new Map();
+      nodes.forEach((node) => {
+        const group = normalizeSourceGroup(node.source_group);
+        if (!groups.has(group)) {
+          groups.set(group, sourceColor(group));
+        }
+      });
+      legend.innerHTML = "";
+      Array.from(groups.entries()).sort().forEach(([group, color]) => {
+        const item = document.createElement("div");
+        item.className = "legend-item";
+        item.innerHTML = `<span class="swatch" style="background:${color}"></span><span>${escapeHtml(sourceLabel(group))}</span>`;
+        legend.appendChild(item);
+      });
+      if (!groups.size) {
+        legend.innerHTML = '<p class="empty">La légende apparaîtra une fois les données chargées.</p>';
+      }
+    }
+
+    function extractCandidateYears(text) {
+      const matches = String(text || "").match(/\b(1[0-9]{3}|20[0-9]{2})\b/g) || [];
+      return matches
+        .map((value) => Number.parseInt(value, 10))
+        .filter((value) => value >= 1000 && value <= 2099);
+    }
+
+    function inferNodeYear(node) {
+      const candidates = [
+        ...extractCandidateYears(node.label),
+        ...extractCandidateYears(node.description),
+        ...extractCandidateYears((node.document_paths || []).join(" ")),
+      ];
+      if (!candidates.length) {
+        return null;
+      }
+      return Math.min(...candidates);
+    }
+
+    function inferTimelineMeta(nodes) {
+      const enriched = nodes.map((node) => ({
+        ...node,
+        timeline_year: inferNodeYear(node),
+      }));
+      const years = Array.from(
+        new Set(
+          enriched
+            .map((node) => node.timeline_year)
+            .filter((value) => Number.isInteger(value))
+        )
+      ).sort((a, b) => a - b);
+      return {
+        nodes: enriched,
+        years,
+        minYear: years.length ? years[0] : null,
+        maxYear: years.length ? years[years.length - 1] : null,
+        withYearCount: enriched.filter((node) => Number.isInteger(node.timeline_year)).length,
+        coverageRatio: enriched.length
+          ? enriched.filter((node) => Number.isInteger(node.timeline_year)).length / enriched.length
+          : 0,
+      };
+    }
+
+    function normalizeTimelineOrientation(value) {
+      return String(value || "vertical").toLowerCase() === "horizontal" ? "horizontal" : "vertical";
+    }
+
+    function normalizeRequestedMode(value) {
+      const raw = String(value || "auto").toLowerCase();
+      const legacyMap = {
+        cose: "relation",
+        concentric: "focus",
+        circle: "overview",
+        grid: "compact",
+      };
+      return legacyMap[raw] || (VIEW_MODE_LABELS[raw] ? raw : "auto");
+    }
+
+    function hasTemporalIntent(query) {
+      return /\b(chronologie|timeline|dates?|daté|datée|avant|après|succession|siècle|quand|période)\b/i.test(String(query || ""));
+    }
+
+    function analyzeGraphModes(data, timelineMeta) {
+      const density = data.total_nodes > 1 ? data.total_edges / data.total_nodes : 0;
+      const temporalEligible = Boolean(
+        timelineMeta
+        && timelineMeta.years.length >= 3
+        && timelineMeta.withYearCount >= 3
+        && timelineMeta.coverageRatio >= 0.35
+      );
+      return {
+        density,
+        temporalEligible,
+        temporalIntent: hasTemporalIntent(queryInput.value.trim()),
+      };
+    }
+
+    function recommendViewMode(data, analysis) {
+      if (analysis.temporalEligible && analysis.temporalIntent) {
+        return "timeline";
+      }
+      if (data.total_nodes <= 18) {
+        return "focus";
+      }
+      if (data.total_nodes >= 70) {
+        return "compact";
+      }
+      if (analysis.density < 0.9) {
+        return "overview";
+      }
+      return "relation";
+    }
+
+    function updateModeUi(analysis, requestedMode, recommendedMode, activeMode, note = "") {
+      const isRecommended = layoutModeSelect.value === "auto";
+      layoutBadge.classList.remove("disabled");
+      layoutBadge.textContent = isRecommended
+        ? `Recommandé · ${VIEW_MODE_LABELS[recommendedMode]}`
+        : `Actif · ${VIEW_MODE_LABELS[activeMode] || activeMode}`;
+
+      const timelineOption = layoutModeSelect.querySelector('option[value="timeline"]');
+      if (timelineOption) {
+        timelineOption.disabled = !analysis.temporalEligible;
+        timelineOption.textContent = analysis.temporalEligible
+          ? "Vue chronologique"
+          : "Vue chronologique indisponible";
+      }
+
+      if (!analysis.temporalEligible && requestedMode === "timeline") {
+        layoutModeSelect.value = "auto";
+        layoutBadge.classList.add("disabled");
+        layoutBadge.textContent = "Chronologie indisponible";
+      }
+
+      const timelineActive = activeMode === "timeline";
+      timelineOrientationSelect.disabled = !timelineActive;
+      timelineOrientationField.classList.toggle("is-muted", !timelineActive);
+      if (!analysis.temporalEligible) {
+        timelineOrientationHint.textContent = "L'axe chronologique devient disponible uniquement lorsqu'une vue chronologique applicable peut être affichée.";
+      } else if (!timelineActive) {
+        timelineOrientationHint.textContent = "Activez la vue chronologique pour choisir l'axe de lecture temporelle.";
+      } else {
+        timelineOrientationHint.textContent = `L'axe ${normalizeTimelineOrientation(timelineOrientationSelect.value) === "vertical" ? "vertical" : "horizontal"} est appliqué à la vue chronologique active.`;
+      }
+
+      if (!analysis.temporalEligible && requestedMode === "timeline") {
+        layoutHint.textContent = `La sélection n'apporte pas assez de repères temporels fiables. ${VIEW_MODE_LABELS[recommendedMode]} a été appliquée à la place.`;
+      } else if (!analysis.temporalEligible) {
+        layoutHint.textContent = "La vue chronologique n'est proposée que si suffisamment de dates fiables sont détectées dans la sélection.";
+      } else if (activeMode === "timeline") {
+        layoutHint.textContent = note || "Les éléments sont ordonnés du plus ancien au plus récent quand une année plausible peut être déduite.";
+      } else if (isRecommended) {
+        layoutHint.textContent = `Le mode recommandé a choisi ${VIEW_MODE_LABELS[recommendedMode].toLowerCase()} pour cette sélection.`;
+      } else {
+        layoutHint.textContent = note || "Vous pouvez changer de mode de lecture sans recharger les données.";
+      }
+    }
+
+    function collectRenderedTimelinePoints(tickYears, orientation, layoutMeta) {
+      const byYear = new Map();
+      cy.nodes().forEach((node) => {
+        const year = node.data("timeline_year");
+        if (!Number.isInteger(year)) {
+          return;
+        }
+        const rendered = node.renderedPosition();
+        const axisValue = orientation === "horizontal" ? rendered.x : rendered.y;
+        if (!Number.isFinite(axisValue)) {
+          return;
+        }
+        if (!byYear.has(year)) {
+          byYear.set(year, []);
+        }
+        byYear.get(year).push(axisValue);
+      });
+
+      const points = tickYears.map((year) => {
+        const values = byYear.get(year);
+        if (values && values.length) {
+          const average = values.reduce((sum, value) => sum + value, 0) / values.length;
+          return orientation === "horizontal"
+            ? { year, renderedX: average }
+            : { year, renderedY: average };
+        }
+
+        const axisPos = layoutMeta.axisPositions[year];
+        if (axisPos === undefined) {
+          return null;
+        }
+        const zoom = cy.zoom();
+        const pan = cy.pan();
+        return orientation === "horizontal"
+          ? { year, renderedX: pan.x + (axisPos * zoom) }
+          : { year, renderedY: pan.y + (axisPos * zoom) };
+      }).filter(Boolean);
+
+      return points.sort((left, right) => left.year - right.year);
+    }
+
+    function renderTimelineGuide() {
+      const meta = currentTimelineMeta;
+      const layoutMeta = currentTimelineLayoutMeta;
+      const activeMode = currentAppliedMode;
+      const orientation = layoutMeta?.orientation;
+      timelineGuideVertical.classList.remove("visible");
+      timelineGuideHorizontal.classList.remove("visible");
+      timelineTicksVertical.innerHTML = "";
+      timelineTicksHorizontal.innerHTML = "";
+
+      if (!meta || !layoutMeta || !cy || activeMode !== "timeline" || meta.years.length < 2) {
+        return;
+      }
+
+      const desiredTicks = meta.years.length <= 6
+        ? meta.years
+        : [meta.minYear, ...meta.years.filter((year, index) => index > 0 && index < meta.years.length - 1 && index % Math.ceil(meta.years.length / 4) === 0), meta.maxYear];
+      const tickYears = Array.from(new Set(desiredTicks)).sort((a, b) => a - b);
+
+      const container = cy.container();
+      if (!container) {
+        return;
+      }
+
+      if (orientation === "horizontal") {
+        const width = container.clientWidth;
+        const containerRect = container.getBoundingClientRect();
+        const visualViewport = window.visualViewport || null;
+        const viewportHeight = visualViewport?.height || window.innerHeight || document.documentElement.clientHeight || containerRect.bottom;
+        const viewportBottom = (visualViewport?.offsetTop || 0) + viewportHeight;
+        const points = collectRenderedTimelinePoints(tickYears, orientation, layoutMeta);
+
+        if (!points.length) {
+          return;
+        }
+
+        if (containerRect.bottom <= 0 || containerRect.top >= viewportBottom || width <= 0) {
+          return;
+        }
+
+        const horizontalGuideHeight = 104;
+        const viewportInsetBottom = 12;
+        const viewportGapBelowGraph = Math.max(0, viewportBottom - Math.min(containerRect.bottom, viewportBottom));
+        const guideBottom = clamp(
+          viewportGapBelowGraph + viewportInsetBottom,
+          viewportInsetBottom,
+          Math.max(viewportInsetBottom, viewportHeight - horizontalGuideHeight - 8),
+        );
+
+        const visiblePoints = points.filter((point) => point.renderedX >= 24 && point.renderedX <= (width - 24));
+        const guideStart = clamp(points[0].renderedX, 24, Math.max(24, width - 24));
+        const guideEnd = clamp(points[points.length - 1].renderedX, 24, Math.max(24, width - 24));
+        const railLeft = Math.min(guideStart, guideEnd);
+        const railWidth = Math.max(36, Math.abs(guideEnd - guideStart));
+
+        timelineGuideHorizontal.style.left = `${Math.max(0, containerRect.left).toFixed(2)}px`;
+        timelineGuideHorizontal.style.width = `${Math.max(0, containerRect.width).toFixed(2)}px`;
+        timelineGuideHorizontal.style.bottom = `${guideBottom.toFixed(2)}px`;
+        timelineRailHorizontal.style.left = `${railLeft.toFixed(2)}px`;
+        timelineRailHorizontal.style.right = "auto";
+        timelineRailHorizontal.style.width = `${railWidth.toFixed(2)}px`;
+        timelineRailHorizontal.style.top = "auto";
+        timelineRailHorizontal.style.bottom = "30px";
+
+        timelineLabelHorizontalStart.style.left = `${clamp(railLeft - 8, 8, Math.max(8, width - 120)).toFixed(2)}px`;
+        timelineLabelHorizontalStart.style.top = "auto";
+        timelineLabelHorizontalStart.style.bottom = "52px";
+        timelineLabelHorizontalStart.style.right = "auto";
+        timelineLabelHorizontalEnd.style.left = "auto";
+        timelineLabelHorizontalEnd.style.top = "auto";
+        timelineLabelHorizontalEnd.style.bottom = "52px";
+        timelineLabelHorizontalEnd.style.right = `${clamp(width - (railLeft + railWidth) - 8, 8, Math.max(8, width - 120)).toFixed(2)}px`;
+
+        timelineTicksHorizontal.innerHTML = visiblePoints.map((point) => `
+          <div class="timeline-tick horizontal" style="left: ${point.renderedX.toFixed(2)}px;"><span>${point.year}</span></div>
+        `).join("");
+        timelineGuideHorizontal.classList.add("visible");
+        return;
+      }
+
+      const height = container.clientHeight;
+      const points = collectRenderedTimelinePoints(tickYears, orientation, layoutMeta);
+
+      if (!points.length) {
+        return;
+      }
+
+      const visiblePoints = points.filter((point) => point.renderedY >= 24 && point.renderedY <= (height - 24));
+      const guideStart = clamp(points[0].renderedY, 24, Math.max(24, height - 24));
+      const guideEnd = clamp(points[points.length - 1].renderedY, 24, Math.max(24, height - 24));
+      const railTop = Math.min(guideStart, guideEnd);
+      const railHeight = Math.max(36, Math.abs(guideEnd - guideStart));
+
+      timelineRailVertical.style.top = `${railTop.toFixed(2)}px`;
+      timelineRailVertical.style.bottom = "auto";
+      timelineRailVertical.style.height = `${railHeight.toFixed(2)}px`;
+      timelineRailVertical.style.left = "40px";
+
+      timelineLabelVerticalStart.style.top = `${clamp(railTop - 18, 8, Math.max(8, height - 20)).toFixed(2)}px`;
+      timelineLabelVerticalEnd.style.top = `${clamp((railTop + railHeight) - 10, 8, Math.max(8, height - 20)).toFixed(2)}px`;
+      timelineLabelVerticalEnd.style.bottom = "auto";
+
+      timelineTicksVertical.innerHTML = visiblePoints.map((point) => `
+        <div class="timeline-tick vertical" style="top: ${point.renderedY.toFixed(2)}px;"><span>${point.year}</span></div>
+      `).join("");
+      timelineGuideVertical.classList.add("visible");
+    }
+
+    function buildTimelineLayout(elements, orientation) {
+      const nodes = elements.nodes
+        .map((item) => item.data)
+        .sort((left, right) => {
+          const leftYear = Number.isInteger(left.timeline_year) ? left.timeline_year : Number.MAX_SAFE_INTEGER;
+          const rightYear = Number.isInteger(right.timeline_year) ? right.timeline_year : Number.MAX_SAFE_INTEGER;
+          if (leftYear !== rightYear) {
+            return leftYear - rightYear;
+          }
+          return String(left.label || left.id).localeCompare(String(right.label || right.id), "fr");
+        });
+
+      const positions = {};
+      const rows = new Map();
+      const axisPositions = {};
+      nodes.forEach((node) => {
+        const key = Number.isInteger(node.timeline_year) ? String(node.timeline_year) : "Date non déduite";
+        if (!rows.has(key)) {
+          rows.set(key, []);
+        }
+        rows.get(key).push(node);
+      });
+
+      const rowKeys = Array.from(rows.keys());
+      rowKeys.forEach((key, rowIndex) => {
+        const row = rows.get(key) || [];
+        const baseAxis = rowIndex * 170;
+        if (/^\d{4}$/.test(key)) {
+          axisPositions[Number.parseInt(key, 10)] = baseAxis;
+        }
+        row.forEach((node, nodeIndex) => {
+          const spread = row.length === 1 ? 0 : (nodeIndex - ((row.length - 1) / 2)) * 170;
+          positions[node.id] = orientation === "horizontal"
+            ? { x: baseAxis, y: spread }
+            : { x: spread, y: baseAxis };
+        });
+      });
+
+      return {
+        config: {
+          name: "preset",
+          positions,
+          fit: true,
+          padding: 46,
+          animate: true,
+          animationDuration: 420,
+        },
+        axisPositions,
+        orientation,
+      };
+    }
+
+    function selectLayoutConfig(data, elements) {
+      const requestedMode = normalizeRequestedMode(layoutModeSelect.value);
+      const timelineOrientation = normalizeTimelineOrientation(timelineOrientationSelect.value);
+      const analysis = analyzeGraphModes(data, currentTimelineMeta);
+      const recommendedMode = recommendViewMode(data, analysis);
+      const activeMode = requestedMode === "auto"
+        ? recommendedMode
+        : (requestedMode === "timeline" && !analysis.temporalEligible ? recommendedMode : requestedMode);
+
+      const common = {
+        animate: true,
+        animationDuration: 420,
+        fit: true,
+        padding: 46,
+        nodeDimensionsIncludeLabels: true,
+      };
+
+      let config;
+      let note = "";
+      let timelineLayoutMeta = null;
+
+      if (activeMode === "timeline") {
+        timelineLayoutMeta = buildTimelineLayout(elements, timelineOrientation);
+        config = timelineLayoutMeta.config;
+        note = `Vue chronologique estimée de ${currentTimelineMeta.minYear} à ${currentTimelineMeta.maxYear} sur un axe ${timelineOrientation === "horizontal" ? "horizontal" : "vertical"}.`;
+      } else if (activeMode === "focus") {
+        config = {
+          name: "concentric",
+          ...common,
+          concentric: (node) => Number(node.data("degree") || 0),
+          levelWidth: () => 2,
+        };
+        note = "Les entités les plus structurantes sont rapprochées du centre pour faciliter la lecture.";
+      } else if (activeMode === "overview") {
+        config = {
+          name: "circle",
+          ...common,
+        };
+        note = "La vue d'ensemble privilégie une lecture panoramique de la sélection.";
+      } else if (activeMode === "compact") {
+        config = {
+          name: "grid",
+          ...common,
+          avoidOverlap: true,
+        };
+        note = "La vue compacte aide à parcourir un grand nombre d'éléments sans chevauchement.";
+      } else {
+        config = {
+          name: "cose",
+          ...common,
+          idealEdgeLength: 120,
+          nodeRepulsion: 450000,
+          gravity: 0.35,
+          nestingFactor: 0.9,
+          componentSpacing: 120,
+        };
+        note = "La vue relationnelle met l'accent sur les proximités et les groupes d'entités.";
+      }
+
+      updateModeUi(analysis, requestedMode, recommendedMode, activeMode, note);
+
+      return {
+        key: activeMode,
+        requestedMode,
+        recommendedMode,
+        label: VIEW_MODE_LABELS[activeMode] || activeMode,
+        config,
+        note,
+        temporalEligible: analysis.temporalEligible,
+        timelineLayoutMeta,
+      };
+    }
+
+    function buildLoginRedirectUri() {
+      return window.location.href;
+    }
+
+    function loadScript(url) {
+      return new Promise((resolve, reject) => {
+        const script = document.createElement("script");
+        script.src = url;
+        script.async = true;
+        script.onload = resolve;
+        script.onerror = reject;
+        document.head.appendChild(script);
+      });
+    }
+
+    async function ensureCytoscapeLoaded() {
+      if (window.cytoscape) {
+        return;
+      }
+      let lastError = null;
+      for (const url of CYTOSCAPE_CDN_URLS) {
+        try {
+          await loadScript(url);
+          if (window.cytoscape) {
+            return;
+          }
+        } catch (error) {
+          lastError = error;
+        }
+      }
+      throw lastError || new Error("Impossible de charger la bibliotheque de visualisation.");
+    }
+
+    function loadKeycloakScript() {
+      if (!viewerConfig.auth_required) {
+        return Promise.resolve();
+      }
+      if (window.Keycloak) {
+        return Promise.resolve();
+      }
+      return new Promise((resolve, reject) => {
+        const script = document.createElement("script");
+        script.src = viewerConfig.keycloak_js_url;
+        script.async = true;
+        script.onload = resolve;
+        script.onerror = () => reject(new Error("Impossible de charger keycloak.js"));
+        document.head.appendChild(script);
+      });
+    }
+
+    async function redirectToLogin() {
+      if (!viewerConfig.auth_required || !keycloak) {
+        return false;
+      }
+      setOverlayState("Connexion requise", "Redirection vers Keycloak car votre session de visualisation est absente ou expirée.");
+      await keycloak.login({ redirectUri: buildLoginRedirectUri() });
+      return false;
+    }
+
+    async function ensureKeycloakSession() {
+      if (!viewerConfig.auth_required) {
+        return true;
+      }
+
+      await loadKeycloakScript();
+      if (!keycloak) {
+        keycloak = new window.Keycloak({
+          url: viewerConfig.keycloak_url,
+          realm: viewerConfig.realm,
+          clientId: viewerConfig.client_id,
+        });
+      }
+
+      setOverlayState("Authentification", "Vérification de votre session Keycloak pour accéder à la visualisation.");
+      let authenticated = false;
+      try {
+        authenticated = await keycloak.init({
+          onLoad: "login-required",
+          checkLoginIframe: false,
+          pkceMethod: "S256",
+          redirectUri: buildLoginRedirectUri(),
+        });
+      } catch (error) {
+        console.error(error);
+        setOverlayState("Authentification impossible", "La session Keycloak n'a pas pu être initialisée. Une nouvelle connexion va être demandée.", true);
+        return redirectToLogin();
+      }
+
+      if (!authenticated) {
+        setOverlayState("Connexion requise", "Aucune session Keycloak valide n'a été détectée pour le visualiseur.", true);
+        return redirectToLogin();
+      }
+
+      accessToken = keycloak.token || "";
+      if (!accessToken) {
+        setOverlayState("Jeton manquant", "La session Keycloak existe mais aucun jeton d'accès n'a été reçu pour charger les données du graphe.", true);
+        return redirectToLogin();
+      }
+
+      keycloak.onTokenExpired = async () => {
+        try {
+          const refreshed = await keycloak.updateToken(30);
+          accessToken = keycloak.token || "";
+          if (!refreshed && !accessToken) {
+            await redirectToLogin();
+          }
+        } catch (error) {
+          console.error(error);
+          await redirectToLogin();
+        }
+      };
+
+      setOverlayState("Session validée", `Session active pour ${keycloak.tokenParsed?.preferred_username || "l'utilisateur courant"}.`);
+      return true;
+    }
+
+    async function ensureFreshToken() {
+      if (!viewerConfig.auth_required) {
+        return true;
+      }
+      if (!keycloak) {
+        return ensureKeycloakSession();
+      }
+      try {
+        await keycloak.updateToken(30);
+        accessToken = keycloak.token || "";
+        if (!accessToken) {
+          setOverlayState("Session expirée", "Le jeton de visualisation a expiré. Une nouvelle connexion Keycloak va être demandée.", true);
+          return redirectToLogin();
+        }
+        return true;
+      } catch (error) {
+        console.error(error);
+        setOverlayState("Session expirée", "Le rafraîchissement du jeton Keycloak a échoué. Une nouvelle connexion va être demandée.", true);
+        return redirectToLogin();
+      }
+    }
+
+    function updateUrl() {
+      const params = new URLSearchParams();
+      if (queryInput.value.trim()) params.set("query", queryInput.value.trim());
+      if (sourceSelect.value) params.set("source_prefix", sourceSelect.value);
+      params.set("max_nodes", String(maxNodesInput.value || 80));
+      params.set("min_weight", String(minWeightInput.value || 1));
+      params.set("layout", normalizeRequestedMode(layoutModeSelect.value || "auto"));
+      params.set("timeline_axis", normalizeTimelineOrientation(timelineOrientationSelect.value || "vertical"));
+      history.replaceState(null, "", `${location.pathname}?${params.toString()}`);
+    }
+
+    function seedFromUrl() {
+      const params = new URLSearchParams(location.search);
+      queryInput.value = params.get("query") || "";
+      maxNodesInput.value = params.get("max_nodes") || "80";
+      minWeightInput.value = params.get("min_weight") || "1";
+      layoutModeSelect.value = normalizeRequestedMode(params.get("layout") || "auto");
+      timelineOrientationSelect.value = normalizeTimelineOrientation(params.get("timeline_axis") || "vertical");
+      populateSources([{ id: "", label: "Tous les documents" }], params.get("source_prefix") || "");
+      if (params.get("source_prefix")) {
+        sourceSelect.value = params.get("source_prefix");
+      }
+      syncQuestionField();
+    }
+
+    function buildElements(data) {
+      const nodes = data.nodes.map((node) => {
+        const group = normalizeSourceGroup(node.source_group);
+        return {
+          data: {
+            ...node,
+            source_group: group,
+            color: sourceColor(group),
+            display_size: Math.max(26, Math.min(82, Number(node.size || 18) * 2.1)),
+          }
+        };
+      });
+
+      const edges = data.edges
+        .filter((edge) => data.nodes.some((node) => node.id === edge.source) && data.nodes.some((node) => node.id === edge.target))
+        .map((edge, index) => ({
+          data: {
+            id: `${edge.source}__${edge.target}__${index}`,
+            ...edge,
+          }
+        }));
+
+      return { nodes, edges };
+    }
+
+    function buildCytoscapeInstance() {
+      cy = window.cytoscape({
+        container: document.getElementById("cy"),
+        elements: [],
+        minZoom: 0.2,
+        maxZoom: 2.8,
+        wheelSensitivity: 0.18,
+        boxSelectionEnabled: false,
+        style: [
+          {
+            selector: "node",
+            style: {
+              "background-color": "data(color)",
+              "border-width": 2,
+              "border-color": "#ffffff",
+              "width": "data(display_size)",
+              "height": "data(display_size)",
+              "label": "data(label)",
+              "font-size": 11,
+              "font-family": "Marianne, Avenir Next, Segoe UI, Helvetica Neue, Arial, sans-serif",
+              "font-weight": 600,
+              "color": "#161616",
+              "text-wrap": "wrap",
+              "text-max-width": 110,
+              "text-valign": "bottom",
+              "text-margin-y": 9,
+              "text-background-opacity": 0.95,
+              "text-background-color": "#ffffff",
+              "text-background-padding": 3,
+              "text-border-width": 1,
+              "text-border-color": "#ececfe"
+            }
+          },
+          {
+            selector: "edge",
+            style: {
+              "width": "mapData(weight, 1, 18, 1.5, 6)",
+              "line-color": "#6b6bff",
+              "target-arrow-color": "#6b6bff",
+              "curve-style": "bezier",
+              "opacity": 0.72
+            }
+          },
+          {
+            selector: "node:selected",
+            style: {
+              "border-color": "#000091",
+              "border-width": 4,
+              "overlay-color": "#000091",
+              "overlay-opacity": 0.08
+            }
+          },
+          {
+            selector: "edge:selected",
+            style: {
+              "line-color": "#c9191e",
+              "target-arrow-color": "#c9191e",
+              "width": "mapData(weight, 1, 18, 2.5, 8)",
+              "overlay-color": "#c9191e",
+              "overlay-opacity": 0.08
+            }
+          },
+          {
+            selector: ".faded",
+            style: {
+              "opacity": 0.18,
+              "text-opacity": 0.25
+            }
+          }
+        ]
+      });
+
+      cy.on("tap", "node", (event) => {
+        const node = event.target;
+        cy.elements().removeClass("faded");
+        cy.elements().difference(node.closedNeighborhood()).addClass("faded");
+        setNodeDetails(node.data());
+      });
+
+      cy.on("tap", "edge", (event) => {
+        const edge = event.target;
+        cy.elements().removeClass("faded");
+        cy.elements().difference(edge.connectedNodes().union(edge)).addClass("faded");
+        setEdgeDetails(edge.data());
+      });
+
+      cy.on("tap", (event) => {
+        if (event.target !== cy) {
+          return;
+        }
+        cy.elements().removeClass("faded");
+        cy.elements().unselect();
+        setEmptyDetails();
+      });
+
+      cy.on("mouseover", "node, edge", () => {
+        document.body.style.cursor = "pointer";
+      });
+
+      cy.on("mouseout", "node, edge", () => {
+        document.body.style.cursor = "";
+      });
+
+      cy.on("pan zoom resize", () => {
+        renderTimelineGuide();
+      });
+    }
+
+    function applyGraphToCytoscape(data) {
+      if (!cy) {
+        buildCytoscapeInstance();
+      }
+
+      currentGraphData = data;
+      currentTimelineMeta = inferTimelineMeta(data.nodes);
+      const enrichedData = {
+        ...data,
+        nodes: currentTimelineMeta.nodes,
+      };
+      const elements = buildElements(enrichedData);
+      cy.elements().remove();
+      cy.add([...elements.nodes, ...elements.edges]);
+
+      const layoutSelection = selectLayoutConfig(enrichedData, elements);
+      currentAppliedMode = layoutSelection.key;
+      currentTimelineLayoutMeta = layoutSelection.timelineLayoutMeta;
+      const layout = cy.layout(layoutSelection.config);
+      const handleLayoutStop = () => {
+        window.requestAnimationFrame(() => {
+          cy.resize();
+          focusGraphInViewport(false);
+        });
+      };
+      if (typeof layout.one === "function") {
+        layout.one("layoutstop", handleLayoutStop);
+      } else if (typeof layout.once === "function") {
+        layout.once("layoutstop", handleLayoutStop);
+      } else if (typeof layout.on === "function") {
+        layout.on("layoutstop", handleLayoutStop);
+      }
+      layout.run();
+
+      cy.elements().removeClass("faded");
+      const modePrefix = layoutSelection.requestedMode === "auto"
+        ? `Mode recommandé · ${layoutSelection.label}`
+        : `Mode actif · ${layoutSelection.label}`;
+      setChip(`${enrichedData.total_nodes} entités / ${enrichedData.total_edges} liens · ${modePrefix}`);
+      return layoutSelection;
+    }
+
+    async function fetchGraph() {
+      applyButton.disabled = true;
+      setOverlayState("Actualisation", "Chargement de la visualisation en cours.");
+      setChip("Chargement");
+      try {
+        const authReady = await ensureFreshToken();
+        if (viewerConfig.auth_required && !authReady) {
+          setChip("Connexion requise");
+          return;
+        }
+
+        const params = new URLSearchParams({
+          query: queryInput.value.trim(),
+          source_prefix: sourceSelect.value,
+          max_nodes: String(maxNodesInput.value || 80),
+          min_weight: String(minWeightInput.value || 1),
+        });
+
+        const response = await fetch(`/graph/data?${params.toString()}`, {
+          headers: authHeaders(),
+        });
+
+        if (response.status === 401) {
+          accessToken = "";
+          setOverlayState("Session expirée", "Le bridge a refusé le jeton courant. Une nouvelle connexion Keycloak va être demandée.", true);
+          await redirectToLogin();
+          return;
+        }
+
+        if (!response.ok) {
+          throw new Error(`Le bridge a répondu avec le statut ${response.status}.`);
+        }
+
+        const data = await response.json();
+        populateSources(data.available_sources, data.source_prefix || "");
+        populateLegend(data.nodes);
+        nodeCount.textContent = String(data.total_nodes);
+        edgeCount.textContent = String(data.total_edges);
+        downloadLink.href = data.download_url || "/graph/raw";
+
+        if (!data.graph_ready) {
+          if (cy) {
+            cy.elements().remove();
+          }
+          currentTimelineLayoutMeta = null;
+          renderTimelineGuide();
+          currentAppliedMode = null;
+          setEmptyDetails();
+          setOverlayState("Visualisation indisponible", data.message || "Le graphe n'est pas encore prêt.", true);
+          setChip("Aucun graphe prêt");
+          updateUrl();
+          return;
+        }
+
+        const layoutSelection = applyGraphToCytoscape(data);
+        setEmptyDetails();
+        const defaultMessage = layoutSelection.note
+          ? `${data.message || "Ajustez les paramètres pour modifier l'affichage."} ${layoutSelection.note}`
+          : (data.message || "Ajustez les paramètres pour modifier l'affichage.");
+        setOverlayState("Visualisation prête", defaultMessage);
+        updateUrl();
+      } catch (error) {
+        console.error(error);
+        setChip("Erreur de chargement");
+        currentTimelineLayoutMeta = null;
+        renderTimelineGuide();
+        currentAppliedMode = null;
+        setOverlayState(
+          "Erreur de chargement",
+          error instanceof Error ? error.message : "La visualisation n'a pas pu être chargée.",
+          true
+        );
+      } finally {
+        applyButton.disabled = false;
+      }
+    }
+
+    async function initializeViewer() {
+      seedFromUrl();
+      setEmptyDetails();
+      populateLegend([]);
+
+      try {
+        await ensureCytoscapeLoaded();
+      } catch (error) {
+        console.error(error);
+        setOverlayState(
+          "Bibliotheque de visualisation indisponible",
+          "La bibliothèque de visualisation n'a pas pu être chargée. Vérifiez l'accès réseau ou fournissez l'asset localement.",
+          true
+        );
+        setChip("Bibliothèque indisponible");
+        applyButton.disabled = true;
+        fitButton.disabled = true;
+        layoutModeSelect.disabled = true;
+        return;
+      }
+
+      const authReady = await ensureKeycloakSession();
+      if (viewerConfig.auth_required && !authReady) {
+        setChip("Connexion requise");
+        return;
+      }
+      await fetchGraph();
+    }
+
+    applyButton.addEventListener("click", fetchGraph);
+    queryInput.addEventListener("input", syncQuestionField);
+    queryInput.addEventListener("change", syncQuestionField);
+    fitButton.addEventListener("click", () => {
+      if (cy) {
+        cy.elements().removeClass("faded");
+        focusGraphInViewport(true);
+      }
+    });
+    openWebuiButton.addEventListener("click", relaunchInOpenWebUi);
+
+    layoutModeSelect.addEventListener("change", () => {
+      if (!currentGraphData || !cy) {
+        updateUrl();
+        return;
+      }
+      const layoutSelection = applyGraphToCytoscape(currentGraphData);
+      const message = layoutSelection.note
+        ? `Mode de lecture modifié. ${layoutSelection.note}`
+        : "Mode de lecture modifié.";
+      setOverlayState("Visualisation prête", message);
+      updateUrl();
+    });
+
+    timelineOrientationSelect.addEventListener("change", () => {
+      if (!currentGraphData || !cy) {
+        updateUrl();
+        return;
+      }
+      if (currentAppliedMode !== "timeline" && normalizeRequestedMode(layoutModeSelect.value) !== "timeline") {
+        timelineOrientationHint.textContent = `L'axe ${normalizeTimelineOrientation(timelineOrientationSelect.value) === "horizontal" ? "horizontal" : "vertical"} sera utilisé si la vue chronologique devient pertinente.`;
+        updateUrl();
+        return;
+      }
+      const layoutSelection = applyGraphToCytoscape(currentGraphData);
+      const message = layoutSelection.note
+        ? `Axe chronologique modifié. ${layoutSelection.note}`
+        : "Axe chronologique modifié.";
+      setOverlayState("Visualisation prête", message);
+      updateUrl();
+    });
+
+    downloadLink.addEventListener("click", async (event) => {
+      event.preventDefault();
+      try {
+        await ensureFreshToken();
+        const response = await fetch("/graph/raw", {
+          headers: authHeaders(),
+        });
+        if (response.status === 401) {
+          await redirectToLogin();
+          return;
+        }
+        if (!response.ok) {
+          throw new Error(`Le téléchargement a échoué avec le statut ${response.status}.`);
+        }
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement("a");
+        anchor.href = url;
+        anchor.download = "graphe.graphml";
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+        URL.revokeObjectURL(url);
+      } catch (error) {
+        console.error(error);
+        setOverlayState(
+          "Téléchargement impossible",
+          error instanceof Error ? error.message : "Le fichier du graphe n'a pas pu être téléchargé.",
+          true
+        );
+      }
+    });
+
+    initializeViewer();
+  </script>
+</body>
+</html>

@@ -1,0 +1,919 @@
+Tu es un architecte logiciel senior expert en :
+
+- Python
+- FastAPI
+- Docker
+- Kubernetes
+- DevOps automation
+- Open WebUI
+- Microsoft GraphRAG
+- Keycloak OIDC
+- cert-manager / Let's Encrypt
+- sécurité applicative
+- CI/CD
+- tests automatisés
+
+Ta mission est de générer un repository GitHub complet prêt à être utilisé.
+
+Le repository doit être directement publiable sur GitHub et s’appeler :
+
+grafrag-experimentation
+
+Le repository doit permettre d’expérimenter GraphRAG avec Open WebUI dans une architecture réaliste.
+
+Le projet doit fonctionner :
+
+1) en local avec Docker
+2) dans Kubernetes
+
+Le projet doit être propre, cohérent, sécurisé et automatisé.
+
+--------------------------------------------------
+
+OBJECTIF FONCTIONNEL
+
+Le projet doit permettre :
+
+- d’utiliser Open WebUI comme interface utilisateur
+- d’interroger un corpus documentaire via Microsoft GraphRAG
+- d’appeler un endpoint LLM externe compatible OpenAI
+- d’intégrer GraphRAG via un service bridge FastAPI
+- d’utiliser un pipeline Open WebUI pour interroger GraphRAG
+- d’exposer ce pipeline comme modèle réellement consommable par Open WebUI via l’API OpenAI-compatible du service pipelines
+- d’utiliser par défaut un corpus GraphRAG local sous graphrag/input, distinct des espaces documentaires d’Open WebUI tant qu’aucune synchronisation explicite n’est réellement implémentée
+- d’exposer un visualiseur interactif du graphe GraphRAG, accessible par URL et exploitable depuis Open WebUI via un lien renvoyé par le pipeline
+- de prévoir une image de modèle Open WebUI issue de la mascotte, appliquée explicitement via `meta.profile_image_url` sur les entrées de modèles GraphRAG ou leurs overrides/aliases
+- d’utiliser un SSO Keycloak en environnement Kubernetes
+- d’automatiser le build, le déploiement, les tests et les vérifications de sécurité
+
+--------------------------------------------------
+
+ARCHITECTURE
+
+Architecture logique :
+
+Open WebUI
+↓
+Pipeline OpenWebUI
+↓
+GraphRAG Bridge API (FastAPI)
+↓
+GraphRAG
+↓
+Endpoint LLM externe compatible OpenAI
+
+Le LLM n’est PAS déployé dans ce repository.
+
+Il est consommé via un endpoint API.
+
+Source documentaire GraphRAG par défaut :
+
+- corpus source dans graphrag/input
+- artefacts et index dans graphrag/output
+- Open WebUI sert d’interface de chat
+- le projet ne doit pas prétendre utiliser les espaces documentaires / knowledge d’Open WebUI si cette synchronisation n’est pas réellement implémentée
+- le bridge peut exposer une UI de visualisation du graphe sur /graph, indépendante d’Open WebUI, et Open WebUI peut seulement y pointer par lien
+- Open WebUI peut enrichir les modèles GraphRAG avec des overrides/aliases persistés dans sa base (`webui.db`) afin d’y associer un nom affiché, une description et une image de profil de modèle
+
+--------------------------------------------------
+
+ENDPOINT LLM
+
+Le système doit fonctionner avec un endpoint LLM compatible OpenAI.
+
+Variables attendues :
+
+SCW_LLM_BASE_URL
+SCW_SECRET_KEY_LLM
+SCW_LLM_MODEL
+OPENAI_EMBEDDING_MODEL
+
+Provider par défaut à configurer dans le repository généré :
+
+- provider cible : Scaleway Generative APIs
+- SCW_LLM_BASE_URL = https://api.scaleway.ai/a9158aac-8404-46ea-8bf5-1ca048cd6ab4/v1
+- SCW_LLM_MODEL = mistral-small-3.2-24b-instruct-2506
+- OPENAI_EMBEDDING_MODEL = bge-multilingual-gemma2
+
+Le repository généré peut conserver une compatibilité avec les anciens noms OPENAI_API_BASE, OPENAI_API_KEY et OPENAI_MODEL, mais SCW_LLM_BASE_URL, SCW_SECRET_KEY_LLM et SCW_LLM_MODEL doivent être la surface de configuration primaire partout :
+
+- .env
+- .env.example
+- bridge/config.py
+- graphrag/settings.yaml
+- scripts shell
+- docker-compose.yml
+- manifests et scripts Kubernetes
+
+Le choix embeddings doit être paramétrable par variable d’environnement.
+
+GraphRAG ne doit PAS hardcoder un modèle d’embeddings de type text-embedding-3-small.
+
+Le fichier graphrag/settings.yaml doit utiliser :
+
+- SCW_LLM_BASE_URL
+- SCW_SECRET_KEY_LLM
+- SCW_LLM_MODEL
+- OPENAI_EMBEDDING_MODEL
+
+Le repository généré ne doit pas supposer un ancien format GraphRAG.
+
+Il doit aligner graphrag/settings.yaml sur la vraie version de la CLI installée dans l’image.
+
+En pratique, avec une CLI GraphRAG récente, il faut utiliser un schéma de type :
+
+- completion_models
+- embedding_models
+- input
+- input_storage
+- output_storage
+- cache
+- vector_store
+- local_search
+- global_search
+
+et non un ancien schéma limité à :
+
+- llm
+- embeddings
+- storage
+
+Le cache GraphRAG ne doit pas être configuré avec cache.type=file si la version installée attend un cache logique de type json, memory ou none.
+
+Pour une CLI récente, le repository généré doit utiliser une configuration compatible, par exemple :
+
+- cache.type=json
+- cache.storage.type=file
+- input_storage.type=file
+- output_storage.type=file
+
+Le corpus de démonstration local étant en Markdown, la configuration d’entrée GraphRAG doit explicitement lire les fichiers .md, par exemple avec un file_pattern compatible Markdown et texte brut.
+
+Le vector_store doit être compatible avec la dimension du modèle d’embeddings choisi.
+
+Pour bge-multilingual-gemma2, le repository généré doit configurer la dimension 3584 si la version GraphRAG utilisée l’exige.
+
+Le repository généré doit aussi tenir compte des particularités du provider embeddings réellement utilisé.
+
+Par exemple, avec certaines combinaisons GraphRAG + LiteLLM + endpoint Scaleway, il peut être nécessaire de définir explicitement un call_args compatible pour les embeddings, comme encoding_format=float, afin d’éviter une erreur de validation côté provider.
+
+Pour faciliter la visualisation des relations entre entités, le repository généré doit activer la production d’un snapshot GraphML si la version GraphRAG le supporte, par exemple via snapshots.graphml=true.
+
+Si un visualiseur de graphe HTTP est fourni :
+
+- il doit être servi par le bridge FastAPI
+- il peut lire les artefacts GraphRAG réels comme entities.parquet, relationships.parquet, documents.parquet et graph.graphml
+- il doit exposer au minimum une page HTML /graph, une API JSON /graph/data et éventuellement un téléchargement brut /graph/raw
+- le pipeline Open WebUI peut ajouter un lien vers ce visualiseur dans la réponse finale, mais ne doit pas prétendre qu’Open WebUI visualise lui-même le graphe nativement
+- il est préférable d’utiliser une bibliothèque web dédiée de type Cytoscape.js plutôt qu’un rendu Canvas maison difficile à maintenir
+
+Si le repository choisit d’implémenter ce visualiseur :
+
+- l’interface doit être en français
+- l’ergonomie doit être soignée et institutionnelle, de type DSFR-like
+- les boutons, formulaires, titres, états de chargement et panneaux de détails doivent être cohérents avec cette direction visuelle
+- il est acceptable d’utiliser un thème maison inspiré du DSFR si les assets DSFR officiels ne sont pas intégrés
+- si Cytoscape.js est utilisé, le README doit indiquer clairement si la librairie est servie localement ou chargée depuis un CDN avec fallback
+- si une vue chronologique est proposée, elle doit fonctionner sur axe vertical et horizontal
+- le guide temporel doit rester visible sur les deux axes et se recaler correctement après zoom, pan ou fit Cytoscape
+- en orientation horizontale, le guide temporel ne doit pas être simplement collé au bas théorique du conteneur ; il doit rester positionné par rapport à la fenêtre visible du navigateur si une partie du viewer est hors écran
+- le formulaire doit permettre de relire la question complète sous le champ "Votre question", sans dépendre de la largeur de l’input
+- le centrage initial du graphe et le bouton de recentrage doivent utiliser la zone réellement visible du viewer dans la fenêtre, et non la seule hauteur totale du conteneur Cytoscape
+- si une partie du viewer est hors écran au chargement, le calcul de pan/zoom doit tenir compte de la portion visible dans le viewport navigateur
+- le champ "Axe chronologique" doit être visuellement grisé et désactivé tant que la vue chronologique n’est pas le mode effectivement actif
+
+Le bridge FastAPI doit exposer dans /config le modèle chat et le modèle embeddings configurés, sans jamais exposer la clé API brute.
+
+Le bridge doit aussi éviter qu’une requête interactive Open WebUI reste bloquée trop longtemps.
+
+Le repository généré doit donc prévoir un budget de temps borné pour les chemins coûteux, par exemple :
+
+- un timeout spécifique pour `graphrag query`
+- un timeout spécifique pour la synthèse LLM finale
+- une réponse fallback déterministe si le budget restant est insuffisant
+
+Le pipeline Open WebUI ne doit pas envoyer aveuglément dans GraphRAG tous les prompts techniques générés par Open WebUI lui-même.
+
+Par exemple, si Open WebUI réutilise le pipeline pour générer des suggestions de follow-up, des titres ou d’autres prompts techniques de post-traitement, le repository généré doit savoir les détecter et les court-circuiter proprement, afin d’éviter :
+
+- des timeouts inutiles
+- une surcharge du bridge
+- des erreurs du type `timed out` ou `Remote end closed connection without response`
+
+Quand le bridge renvoie une réponse issue de graphrag query, il doit aussi joindre des citations pertinentes pour la question posée. Il ne doit pas renvoyer simplement les premiers documents d’un manifeste générique si ces citations ne sont pas liées à la requête.
+
+Le bridge doit aussi exposer un état permettant de distinguer :
+
+- un index fallback simplement présent
+- un vrai index GraphRAG prêt pour les requêtes CLI
+
+Un booléen ou indicateur de type graphrag_query_ready est acceptable si nécessaire.
+
+Cet indicateur ne doit pas devenir true trop tôt pendant l’indexation. Il doit refléter un état réellement interrogeable par graphrag query, et non la simple apparition de quelques artefacts intermédiaires.
+
+Si SCW_SECRET_KEY_LLM n’est pas renseignée :
+
+- le bridge doit continuer à fonctionner en mode fallback déterministe local
+- les smoke tests Docker locaux doivent rester passants
+- le README doit expliquer clairement cette différence entre mode fallback et mode LLM réel
+
+Le README doit expliquer comment utiliser :
+
+- Scaleway Generative APIs
+- OpenAI
+- Azure OpenAI
+- vLLM compatible OpenAI
+- endpoint interne compatible OpenAI
+
+--------------------------------------------------
+
+MODES D’EXECUTION
+
+MODE 1 — LOCAL DOCKER
+
+docker compose up -d
+
+Dans ce mode :
+
+- Open WebUI local
+- GraphRAG local
+- Bridge API local
+- SSO optionnel
+- pas de TLS Let's Encrypt
+
+En local, si le repository expose un login OIDC Keycloak :
+
+- Keycloak doit être accessible depuis le Mac sur http://localhost:8082
+- le bouton OIDC d’Open WebUI ne doit pas rediriger le navigateur vers un hostname Docker interne de type keycloak:8080
+- si le formulaire natif Open WebUI est masqué, le repository doit le faire explicitement avec ENABLE_LOGIN_FORM=false
+- les utilisateurs Keycloak de test doivent pouvoir créer leur compte Open WebUI via OIDC local, donc ENABLE_OAUTH_SIGNUP=true doit être activé pour ce scénario
+- le README doit expliquer que docker compose --profile sso up -d keycloak est nécessaire avant tout test OIDC local
+- le README doit proposer le raccourci direct http://localhost:3000/oauth/oidc/login pour démarrer la connexion
+- si le visualiseur GraphRAG est protégé par OIDC, il doit réutiliser Keycloak local et rediriger le navigateur vers http://localhost:8082 en cas de session absente ou expirée
+
+Le nom de service Docker keycloak est interne au réseau Docker et n’est pas directement accessible depuis le navigateur du poste hôte.
+
+La configuration locale doit donc produire des URLs navigateur de type localhost:8082 et non keycloak:8080.
+
+En pratique, le repository généré doit gérer correctement ce point, par exemple avec :
+
+- une metadata OIDC consommée par Open WebUI qui reste compatible avec le poste hôte
+- une configuration Keycloak locale qui publie un issuer et un authorization_endpoint basés sur http://localhost:8082
+- un realm local de test qui n’impose pas HTTPS pour ce scénario de développement
+- si un client OIDC dédié au visualiseur est utilisé, ses redirect URIs et web origins locales doivent viser http://localhost:8081/* et http://127.0.0.1:8081/*
+
+Le bootstrap initial d’Open WebUI peut prendre plusieurs minutes.
+
+Les healthchecks et scripts de tests doivent attendre proprement :
+
+- /healthz pour le bridge
+- /health pour Open WebUI
+- disponibilité du service pipelines
+
+Les scripts shell doivent charger automatiquement .env quand c’est nécessaire.
+
+Les fichiers .env et .env.example doivent être compatibles à la fois avec Docker Compose et avec source .env dans bash/zsh.
+
+Ils ne doivent pas contenir plusieurs définitions contradictoires de la même variable.
+
+Si des variables sont déjà présentes dans l’environnement du shell, par exemple via printenv :
+
+- SCW_SECRET_KEY_LLM
+- SCW_LLM_MODEL
+- SCW_LLM_BASE_URL
+
+alors les scripts et le déploiement ne doivent PAS écraser ces valeurs avec des placeholders provenant de .env.
+
+La règle attendue est :
+
+- les variables exportées dans l’environnement courant priment
+- .env et .env.example servent de fallback
+- un placeholder CHANGE_ME dans .env ne doit jamais remplacer une vraie valeur déjà exportée
+
+Le repository généré doit fournir un chargement d’environnement cohérent et réutilisable dans les scripts shell pour garantir cette priorité.
+
+Le repository généré doit éviter les pièges de ce type :
+
+- une première occurrence ENABLE_OAUTH_SIGNUP=true
+- puis plus bas une seconde occurrence ENABLE_OAUTH_SIGNUP=false
+
+Dans ce cas, la dernière valeur gagne et peut casser silencieusement le login OIDC local.
+
+Toute valeur contenant des espaces doit être quotée.
+
+Exemple attendu :
+
+GRAPHRAG_RESPONSE_TYPE="Multiple Paragraphs"
+
+Le docker-compose local doit utiliser des bind mounts permettant à l’utilisateur d’accéder aux données depuis son poste :
+
+- ./graphrag:/app/graphrag
+- ./openwebui/data:/app/backend/data
+
+En local Docker, le cache GraphRAG ne doit pas polluer le working tree du repository si une meilleure option existe.
+
+Le repository généré doit préférer un volume Docker nommé dédié pour le cache GraphRAG, par exemple :
+
+- volume local monté sur /app/graphrag/cache
+
+Le README doit expliquer explicitement que ce cache local est distinct du corpus source versionné.
+
+Le service bridge du docker-compose local doit aussi propager explicitement les variables SCW_LLM_BASE_URL, SCW_SECRET_KEY_LLM, SCW_LLM_MODEL et OPENAI_EMBEDDING_MODEL pour que des variables exportées dans le shell du poste soient réellement visibles dans le conteneur.
+
+Le bridge ne doit pas considérer un simple index-manifest.json de fallback comme preuve qu’un vrai index GraphRAG est prêt pour les requêtes CLI.
+
+Pour tenter une requête GraphRAG CLI, le repository généré doit vérifier la présence d’artefacts réels et finaux, par exemple :
+
+- entities.parquet
+- relationships.parquet
+- communities.parquet
+- community_reports.parquet
+- fichier graph.graphml
+- dossier lancedb contenant au moins une table .lance
+
+Le repository généré ne doit pas annoncer graphrag_query_ready=true tant que ces artefacts finaux ne sont pas présents.
+
+Le README doit expliquer que l’utilisateur peut modifier graphrag/input directement depuis sa machine puis relancer ./scripts/index_corpus.sh.
+
+--------------------------------------------------
+
+MODE 2 — KUBERNETES
+
+Open WebUI public :
+
+https://openwebui.fake-domain.change.me/
+
+Keycloak SSO :
+
+https://openwebui-sso.fake-domain.change.me/
+
+Les certificats TLS doivent être générés automatiquement avec Let's Encrypt via cert-manager.
+
+Si la version GraphRAG embarquée ne propose pas nativement un backend de cache S3, le repository ne doit pas prétendre le supporter directement.
+
+Dans ce cas, la solution attendue en Kubernetes est pragmatique :
+
+- cache GraphRAG restant de type fichier dans le pod
+- répertoire de cache monté localement dans le pod, par exemple sur /data/graphrag/cache
+- synchronisation pull depuis S3 avant indexation ou démarrage
+- synchronisation push vers S3 après indexation et lors d’un arrêt propre si pertinent
+
+Le repository généré doit alors prévoir les variables d’environnement correspondantes, par exemple :
+
+- GRAPHRAG_CACHE_S3_ENABLED
+- GRAPHRAG_CACHE_S3_BUCKET
+- GRAPHRAG_CACHE_S3_PREFIX
+- GRAPHRAG_CACHE_S3_REGION
+- GRAPHRAG_CACHE_S3_ENDPOINT_URL
+- GRAPHRAG_CACHE_S3_ACCESS_KEY_ID
+- GRAPHRAG_CACHE_S3_SECRET_ACCESS_KEY
+- GRAPHRAG_CACHE_S3_SESSION_TOKEN
+
+Les manifests Kubernetes doivent refléter cette stratégie, par exemple avec :
+
+- emptyDir pour le cache local du pod
+- init container de pull S3
+- job d’indexation qui pull puis push le cache
+- hook preStop ou mécanisme équivalent pour republier le cache si nécessaire
+
+--------------------------------------------------
+
+KEYCLOAK SSO
+
+Realm :
+
+openwebui
+
+Client :
+
+openwebui
+
+Client additionnel local / bridge si un visualiseur protégé est fourni :
+
+graphrag-viewer
+
+Redirect URI :
+
+https://openwebui.fake-domain.change.me/*
+
+Issuer :
+
+https://openwebui-sso.fake-domain.change.me/realms/openwebui
+
+Configuration locale de développement à supporter aussi :
+
+- Keycloak local exposé sur http://localhost:8082
+- Issuer local : http://localhost:8082/realms/openwebui
+- Redirect URIs locales : http://localhost:3000/* et http://127.0.0.1:3000/*
+- Web origins locales : http://localhost:3000 et http://127.0.0.1:3000
+- sslRequired local désactivé pour permettre les tests en HTTP
+- ENABLE_OAUTH_SIGNUP=true pour permettre l’onboarding OIDC des comptes de test dans Open WebUI
+- si un client graphrag-viewer existe, il doit être public, compatible PKCE S256, avec redirect URIs locales http://localhost:8081/* et http://127.0.0.1:8081/*
+
+Le repository ne doit pas se contenter d’un import realm orienté Kubernetes si cela casse l’OIDC en local.
+
+Il doit soit :
+
+- prévoir un realm local distinct
+- soit injecter une configuration compatible à la fois avec le développement local et avec la cible Kubernetes
+
+Le flux de login direct à supporter en local est :
+
+http://localhost:3000/oauth/oidc/login
+
+--------------------------------------------------
+
+UTILISATEURS DE TEST KEYCLOAK
+
+Créer automatiquement :
+
+user1
+user2
+user3
+user4
+user5
+user6
+user7
+user8
+user9
+user10
+
+Emails :
+
+userX@test.local
+
+Passwords :
+
+userXpassword
+
+Roles :
+
+user1 → user9 = user
+user10 = admin
+
+Ces comptes sont uniquement destinés aux tests.
+
+--------------------------------------------------
+
+STRUCTURE DU REPOSITORY
+
+grafrag-experimentation/
+
+docker-compose.yml
+.env.example
+.gitignore
+README.md
+Makefile
+
+/openwebui
+/pipelines
+graphrag_pipeline.py
+
+/graphrag
+/input
+/output
+settings.yaml
+
+/bridge
+app.py
+service.py
+models.py
+config.py
+requirements.txt
+Dockerfile
+
+/k8s
+/base
+namespace.yaml
+configmap.yaml
+secret.example.yaml
+deployment-openwebui.yaml
+service-openwebui.yaml
+deployment-bridge.yaml
+service-bridge.yaml
+ingress-openwebui.yaml
+job-graphrag-index.yaml
+
+/cert-manager
+clusterissuer-letsencrypt.yaml
+
+/keycloak
+realm-openwebui.json
+README.md
+
+/deploy
+prepare-env.sh
+prepare-registry-secrets.sh
+prepare-k8s-secrets.sh
+build-images.sh
+push-images.sh
+deploy-k8s.sh
+smoke-tests.sh
+integration-tests.sh
+penetration-tests.sh
+auto-fix-tests.sh
+report.sh
+
+/scripts
+init_graphrag.sh
+index_corpus.sh
+smoke_test.sh
+generate_medieval_wars_corpus.py
+test_medieval_wars_flow.sh
+
+/tests
+functional
+security
+load
+
+Le repository doit contenir :
+
+- un petit corpus local versionné pour les smoke tests offline
+- un script de démonstration capable de générer un corpus réaliste depuis Wikipédia en français
+- un script de test bout en bout qui s’appuie sur ce corpus de démonstration
+
+Exemple attendu pour le corpus de démonstration :
+
+- thème : guerres médiévales entre l’Angleterre et la France
+- focus principal : guerre de Cent Ans
+- sorties générées dans graphrag/input/wikipedia-medieval-anglo-french-wars
+- un fichier Markdown de questions de test doit être généré avec le corpus
+
+--------------------------------------------------
+
+DOSSIER DEPLOY
+
+Le dossier /deploy doit contenir des scripts DevOps permettant :
+
+Préparer environnement local :
+
+prepare-env.sh
+
+Préparer variables Kubernetes :
+
+prepare-k8s-env.sh
+
+Créer secrets Kubernetes :
+
+prepare-k8s-secrets.sh
+
+Créer secrets docker registry :
+
+prepare-registry-secrets.sh
+
+Builder images docker :
+
+build-images.sh
+
+Pousser images vers registry :
+
+push-images.sh
+
+Configurer Kubernetes pour tirer les images.
+
+--------------------------------------------------
+
+DEPLOIEMENT AUTOMATIQUE
+
+Script principal :
+
+deploy-k8s.sh
+
+Ce script doit :
+
+1 vérifier prérequis
+2 builder images
+3 pousser images
+4 créer secrets
+5 appliquer manifests
+6 attendre readiness
+7 lancer tests
+
+--------------------------------------------------
+
+TESTS AUTOMATIQUES
+
+Après déploiement :
+
+Smoke tests :
+
+smoke-tests.sh
+
+Tests fonctionnels :
+
+tests/functional
+
+Tests API
+
+Tests UI
+
+Tests GraphRAG
+
+Les tests locaux Docker doivent réellement être exécutables et vérifier au minimum :
+
+- GET http://localhost:8081/healthz retourne 200
+- POST http://localhost:8081/index retourne 200
+- POST http://localhost:8081/query retourne une réponse non vide
+- GET http://localhost:3000/health retourne un JSON avec status=true
+- le service pipelines répond sur son API
+
+Si le profil SSO local est lancé, les tests doivent aussi vérifier :
+
+- GET http://localhost:3000/oauth/oidc/login retourne une redirection 302
+- la redirection pointe vers une URL navigateur accessible depuis le poste hôte, typiquement http://localhost:8082/...
+- la redirection ne doit pas pointer vers http://keycloak:8080/...
+- le document de discovery local de Keycloak annonce un issuer et des endpoints en http://localhost:8082/...
+- si le repository choisit un mode Keycloak uniquement, /api/config d’Open WebUI reflète enable_login_form=false et un provider oauth Keycloak
+- le login OIDC d’un utilisateur de test comme user1@test.local aboutit réellement à une session Open WebUI, sans erreur 403 liée à ENABLE_OAUTH_SIGNUP
+- les logs Open WebUI ne doivent pas contenir un rejet OAuth du type Access Prohibited après un callback OIDC valide
+- si un visualiseur GraphRAG protégé est fourni, GET /graph/config indique clairement le mode auth attendu
+- si un visualiseur GraphRAG protégé est fourni, GET /graph/data sans bearer token retourne 401
+- si un client Keycloak graphrag-viewer est configuré, un vrai access token obtenu depuis Keycloak permet d’appeler /graph/data et /graph/raw avec succès
+- la page /graph doit charger une configuration cohérente avec Keycloak local et déclencher un login-required quand la session navigateur est absente
+
+Le repository généré doit aussi proposer un test bout en bout dédié au corpus de démonstration qui :
+
+- génère le corpus Wikipédia
+- lance l’indexation
+- exécute une requête représentative
+- vérifie que la réponse est non vide
+- vérifie que des citations sont retournées
+- si un visualiseur est implémenté, vérifie aussi que la réponse du bridge ou du pipeline contient un lien de graphe exploitable
+
+Si SCW_SECRET_KEY_LLM n’est pas fournie, ce test doit rester valide en mode fallback et documenter explicitement les moteurs observés, par exemple :
+
+- POST /index peut répondre avec engine_used=fallback-manifest
+- POST /query peut répondre avec engine_used=local-deterministic
+- des citations non vides doivent quand même être présentes
+
+Si des variables SCW_* réelles sont présentes dans l’environnement du shell, la validation locale doit aussi vérifier que le conteneur bridge les consomme effectivement.
+
+Par exemple, la validation peut confirmer que :
+
+- le conteneur bridge voit SCW_LLM_BASE_URL
+- le conteneur bridge voit SCW_LLM_MODEL
+- la clé n’est jamais exposée brute, mais /config indique openai_api_key_configured=true
+- le modèle effectif visible dans /config correspond bien à la valeur injectée depuis l’environnement réel
+
+Si SCW_SECRET_KEY_LLM est fournie et que le provider répond réellement, la validation ne doit pas se contenter d’un fallback fonctionnel.
+
+Elle doit aussi vérifier que la vraie CLI GraphRAG fonctionne avec la version embarquée :
+
+- POST /index retourne engine_used=graphrag-cli au moins une fois
+- le dossier graphrag/output contient de vrais artefacts GraphRAG
+- la présence du seul index-manifest.json n’est pas suffisante pour déclarer GraphRAG opérationnel
+- une requête CLI GraphRAG réelle fonctionne avec la syntaxe attendue par la version installée
+
+Le repository généré doit aussi tenir compte de l’évolution de la syntaxe CLI.
+
+Par exemple, une CLI GraphRAG récente attend :
+
+- graphrag query --root <dir> --method <local|global> "question"
+
+et non :
+
+- graphrag query --query "question"
+
+La validation ne doit pas s’arrêter au fait que le module pipeline est chargé.
+
+Elle doit vérifier que le pipeline est réellement consommable par Open WebUI.
+
+Concrètement, le repository généré doit satisfaire les critères suivants :
+
+- GET /v1/pipelines du service pipelines retourne au moins un pipeline GraphRAG
+- GET /v1/models du service pipelines retourne une liste non vide exploitable par Open WebUI
+- POST /v1/chat/completions du service pipelines retourne 200 avec un modèle GraphRAG valide
+- Open WebUI peut appeler ce modèle sans erreur 404
+
+Si nécessaire, adapter le code du pipeline ou la structure attendue par l’image ghcr.io/open-webui/pipelines pour que ces critères soient réellement respectés.
+
+--------------------------------------------------
+
+TESTS DE PENETRATION
+
+Scripts :
+
+penetration-tests.sh
+
+Doivent inclure par exemple :
+
+scan ports
+scan endpoints
+test headers sécurité
+test auth bypass
+test injection basique
+
+--------------------------------------------------
+
+BATTERIE DE TESTS AUTOMATIQUES
+
+Le projet doit inclure un mécanisme permettant :
+
+1 lancer tous les tests
+2 détecter les erreurs
+3 tenter des corrections automatiques simples
+4 relancer les tests
+5 produire un rapport final
+
+Script :
+
+auto-fix-tests.sh
+
+Rapport :
+
+report.sh
+
+Le rapport doit inclure :
+
+résultat des tests
+services déployés
+URLs
+problèmes détectés
+corrections appliquées
+
+--------------------------------------------------
+
+SECURITE
+
+Le repository ne doit contenir AUCUN secret réel.
+
+Interdits :
+
+API keys réelles
+client secrets
+tokens
+certificats privés
+clés privées
+
+Autorisé :
+
+CHANGE_ME
+EXAMPLE_ONLY
+REPLACE_ME
+
+Les comptes user1 → user10 sont autorisés car non sensibles.
+
+--------------------------------------------------
+
+GESTION DES SECRETS
+
+Inclure :
+
+.env.example
+secret.example.yaml
+
+Le README doit expliquer :
+
+injection secrets local
+injection secrets Kubernetes
+
+Les exemples Kubernetes et les scripts de préparation des secrets doivent utiliser SCW_SECRET_KEY_LLM comme nom primaire de secret LLM.
+
+--------------------------------------------------
+
+README
+
+Doit inclure :
+
+Présentation projet
+
+Architecture
+
+diagramme Mermaid
+
+installation Docker
+
+préparation environnement
+
+emplacement du corpus local graphrag/input et des artefacts graphrag/output
+
+explication claire que les espaces documentaires / knowledge d’Open WebUI ne sont pas utilisés par défaut
+
+explication des bind mounts locaux et du fait que le corpus est modifiable depuis la machine hôte
+
+génération d’un corpus de démonstration depuis Wikipédia
+
+questions de test concrètes pour ce corpus
+
+commande pour relancer l’indexation après modification des fichiers source
+
+déploiement Kubernetes
+
+cert-manager
+
+Keycloak
+
+différence entre hostname Docker interne keycloak et URL hôte localhost:8082 en développement local
+
+URL directe de login OIDC locale : http://localhost:3000/oauth/oidc/login
+
+explication du profil Docker sso pour démarrer Keycloak local
+
+explication que keycloak:8080 ne doit jamais être utilisé directement dans le navigateur du Mac
+
+explication que les comptes Keycloak de test doivent pouvoir créer leur compte Open WebUI via OIDC local
+
+explication qu’une erreur 403 après callback OIDC peut venir de ENABLE_OAUTH_SIGNUP=false
+
+explication qu’il faut éviter les variables dupliquées et contradictoires dans .env et .env.example
+
+explication que les variables exportées du shell priment sur .env
+
+explication que SCW_LLM_BASE_URL, SCW_SECRET_KEY_LLM et SCW_LLM_MODEL sont désormais les variables LLM primaires, avec compatibilité éventuelle pour les anciens noms OPENAI_*
+
+explication qu’un vrai index GraphRAG produit des artefacts concrets dans graphrag/output, par exemple parquet, lancedb ou graphml, et qu’un simple index-manifest.json correspond seulement au fallback
+
+explication de la présence éventuelle d’un fichier GraphML pour visualiser les relations entre entités dans Gephi ou Cytoscape
+
+explication d’un éventuel visualiseur HTTP local sur /graph, /graph/data et /graph/raw
+
+explication que la page du visualiseur peut être publique mais que les données du graphe doivent être protégées par bearer token si l’authentification Keycloak y est activée
+
+explication qu’un client Keycloak dédié comme graphrag-viewer peut être nécessaire pour le bridge
+
+explication que le visualiseur relance automatiquement le login Keycloak si la session est absente ou expirée
+
+explication que le visualiseur est en français et suit une ergonomie de type DSFR-like
+
+explication que le visualiseur s’appuie idéalement sur Cytoscape.js pour le rendu interactif, avec indication explicite si l’asset frontend est chargé depuis un CDN ou fourni localement
+
+explication que la vue chronologique doit supporter à la fois un axe vertical et un axe horizontal, avec un guide temporel réellement visible sur les deux orientations
+
+explication que le visualiseur affiche la question complète sous le champ "Votre question" pour éviter la troncature visuelle
+
+explication que create_community_reports peut être suivi d’une phase supplémentaire generate_text_embeddings, et que le repository ne doit pas considérer l’index comme totalement prêt avant la fin de cette phase et la création des tables lancedb
+
+Scaleway Generative APIs
+
+tests
+
+tests sécurité
+
+automatisation
+
+--------------------------------------------------
+
+QUALITE DU CODE
+
+Python :
+
+type hints
+logs
+docstrings
+gestion erreurs
+
+Scripts shell :
+
+- robustes
+- set -euo pipefail
+- chargement cohérent de .env
+- priorité correcte de l’environnement exporté sur les placeholders de .env
+- messages d’erreur actionnables
+
+--------------------------------------------------
+
+PROCESSUS DE GENERATION
+
+Avant de générer les fichiers :
+
+expliquer architecture
+expliquer flux requêtes
+expliquer automatisation
+
+Ensuite générer :
+
+arborescence complète
+contenu complet fichiers
+scripts deploy
+scripts tests
+instructions lancement
+instructions Kubernetes
+rapport final attendu
+
+Puis :
+
+- réellement lancer la stack Docker locale
+- exécuter les smoke tests
+- exécuter les tests fonctionnels
+- vérifier le script de génération du corpus de démonstration
+- vérifier le test bout en bout associé
+- vérifier explicitement le comportement de l’API pipelines
+- vérifier explicitement le comportement fallback si SCW_SECRET_KEY_LLM est absente
+- vérifier explicitement qu’un printenv exposant SCW_SECRET_KEY_LLM, SCW_LLM_MODEL et SCW_LLM_BASE_URL est réellement consommé par le bridge et par les scripts d’indexation
+- corriger si /v1/models est vide ou si /v1/chat/completions retourne 404
+- ne considérer la génération terminée que si le parcours Open WebUI -> pipelines -> bridge fonctionne réellement en local
+
+--------------------------------------------------
+
+IMPORTANT
+
+Le repository doit être :
+
+cohérent
+automatisé
+sécurisé
+publiable sur GitHub
+
+Nom du repository :
+
+grafrag-experimentation

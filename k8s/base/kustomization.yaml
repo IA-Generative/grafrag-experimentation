@@ -1,0 +1,19 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - namespace.yaml
+  - pvc-graphrag.yaml
+  - configmap.yaml
+  - configmap-pipelines.yaml
+  - deployment-bridge.yaml
+  - service-bridge.yaml
+  - deployment-pipelines.yaml
+  - service-pipelines.yaml
+  - deployment-openwebui.yaml
+  - service-openwebui.yaml
+  - deployment-keycloak.yaml
+  - service-keycloak.yaml
+  - ingress-openwebui.yaml
+  - ingress-keycloak.yaml
+  - job-graphrag-index.yaml
+

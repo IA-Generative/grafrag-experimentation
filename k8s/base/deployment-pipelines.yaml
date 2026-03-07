@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pipelines
+  namespace: ${NAMESPACE}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pipelines
+  template:
+    metadata:
+      labels:
+        app: pipelines
+    spec:
+      containers:
+        - name: pipelines
+          image: ${PIPELINES_IMAGE}
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: PIPELINES_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: grafrag-secrets
+                  key: PIPELINES_API_KEY
+          ports:
+            - containerPort: 9099
+              name: http
+          volumeMounts:
+            - name: pipelines-config
+              mountPath: /app/pipelines/graphrag_pipeline.py
+              subPath: graphrag_pipeline.py
+      volumes:
+        - name: pipelines-config
+          configMap:
+            name: pipelines-config
+

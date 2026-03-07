@@ -1,0 +1,58 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: graphrag-index
+  namespace: ${NAMESPACE}
+spec:
+  backoffLimit: 1
+  template:
+    metadata:
+      labels:
+        app: graphrag-index
+    spec:
+      restartPolicy: OnFailure
+      initContainers:
+        - name: bootstrap-graphrag
+          image: ${REGISTRY}/grafrag-bridge:${IMAGE_TAG}
+          command:
+            - /bin/sh
+            - -c
+            - mkdir -p /data/graphrag/input /data/graphrag/output /data/graphrag/cache && cp -Rn /bootstrap/graphrag/. /data/graphrag/ || true
+          volumeMounts:
+            - name: graphrag-data
+              mountPath: /data/graphrag
+            - name: graphrag-cache
+              mountPath: /data/graphrag/cache
+      containers:
+        - name: indexer
+          image: ${REGISTRY}/grafrag-bridge:${IMAGE_TAG}
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef:
+                name: grafrag-config
+            - secretRef:
+                name: grafrag-secrets
+          command:
+            - /bin/sh
+            - -c
+            - |
+              python /app/cache_sync.py pull || exit $?
+              python /app/run_index_job.py
+              index_status=$?
+              python /app/cache_sync.py push
+              push_status=$?
+              if [ "$index_status" -ne 0 ]; then
+                exit "$index_status"
+              fi
+              exit "$push_status"
+          volumeMounts:
+            - name: graphrag-data
+              mountPath: /data/graphrag
+            - name: graphrag-cache
+              mountPath: /data/graphrag/cache
+      volumes:
+        - name: graphrag-data
+          persistentVolumeClaim:
+            claimName: graphrag-data
+        - name: graphrag-cache
+          emptyDir: {}
