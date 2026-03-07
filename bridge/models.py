@@ -42,6 +42,7 @@ class GraphEdge(BaseModel):
 
 class GraphDataResponse(BaseModel):
     graph_ready: bool
+    graph_kind: str = "entity"
     query: str = ""
     source_prefix: str = ""
     max_nodes: int
@@ -81,6 +82,13 @@ class QueryResponse(BaseModel):
 class IndexRequest(BaseModel):
     rebuild: bool = Field(
         default=False, description="Whether to force a refresh of the local index metadata."
+    )
+    strict: bool = Field(
+        default=False,
+        description=(
+            "Whether to fail when GraphRAG query-ready artifacts cannot be produced, "
+            "instead of silently falling back to a lightweight manifest."
+        ),
     )
 
 

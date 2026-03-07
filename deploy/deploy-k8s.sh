@@ -10,6 +10,11 @@ source "${ROOT_DIR}/scripts/load_env.sh"
 load_dotenv_preserve_existing "${ROOT_DIR}/.env"
 sync_llm_env_aliases
 
+: "${GRAPHRAG_INDEX_TIMEOUT_SECONDS:=3600}"
+export GRAPHRAG_INDEX_TIMEOUT_SECONDS
+: "${RUN_GRAPHRAG_INDEX_JOB:=false}"
+export RUN_GRAPHRAG_INDEX_JOB
+
 for dependency in kubectl docker envsubst curl; do
   if ! command -v "$dependency" >/dev/null 2>&1; then
     echo "Missing required dependency: $dependency" >&2
@@ -24,30 +29,41 @@ done
 
 mkdir -p k8s/rendered
 
+RENDER_VARS='${BRIDGE_HOST} ${BRIDGE_TLS_SECRET_NAME} ${GRAPHRAG_CACHE_S3_BUCKET} ${GRAPHRAG_CACHE_S3_ENABLED} ${GRAPHRAG_CACHE_S3_ENDPOINT_URL} ${GRAPHRAG_CACHE_S3_PREFIX} ${GRAPHRAG_CACHE_S3_REGION} ${GRAPHRAG_INDEX_TIMEOUT_SECONDS} ${GRAPHRAG_METHOD} ${GRAPHRAG_RESPONSE_TYPE} ${GRAPHRAG_TOP_K} ${GRAPH_VIEWER_AUTH_REQUIRED} ${GRAPH_VIEWER_CLIENT_ID} ${IMAGE_TAG} ${KEYCLOAK_ADMIN} ${KEYCLOAK_CLIENT_SECRET} ${KEYCLOAK_HOST} ${KEYCLOAK_REALM} ${KEYCLOAK_TLS_SECRET_NAME} ${LETSENCRYPT_EMAIL} ${NAMESPACE} ${OPENAI_EMBEDDING_MODEL} ${OPENAI_EMBEDDING_VECTOR_SIZE} ${OPENWEBUI_HOST} ${OPENWEBUI_IMAGE} ${PIPELINES_IMAGE} ${REGISTRY} ${SCW_LLM_BASE_URL} ${SCW_LLM_MODEL} ${SEARXNG_HOST} ${SEARXNG_IMAGE} ${SEARXNG_REPLICAS} ${SEARXNG_TLS_SECRET_NAME} ${TLS_SECRET_NAME} ${VALKEY_IMAGE}'
+
 render_file() {
   local source_file="$1"
   local target_file="k8s/rendered/$(basename "$source_file")"
-  envsubst < "$source_file" > "$target_file"
+  envsubst "$RENDER_VARS" < "$source_file" > "$target_file"
 }
 
 render_file cert-manager/clusterissuer-letsencrypt.yaml
 for manifest in k8s/base/*.yaml; do
-  if [[ "$(basename "$manifest")" == "secret.example.yaml" ]]; then
+  manifest_name="$(basename "$manifest")"
+  if [[ "$manifest_name" == "secret.example.yaml" || "$manifest_name" == "configmap-searxng.yaml" ]]; then
+    continue
+  fi
+  if [[ "$manifest_name" == "ingress-searxng.yaml" && -z "${SEARXNG_HOST:-}" ]]; then
     continue
   fi
   render_file "$manifest"
 done
+python3 scripts/render_keycloak_realm.py \
+  --source keycloak/realm-openwebui.k8s.json \
+  --output k8s/rendered/realm-openwebui.json \
+  --password-file keycloak/realm-passwords.local.json
 
 kubectl apply -f k8s/rendered/namespace.yaml
 kubectl apply -f k8s/rendered/clusterissuer-letsencrypt.yaml
 kubectl apply -f k8s/rendered/pvc-graphrag.yaml
 kubectl apply -f k8s/rendered/configmap.yaml
+python3 scripts/render_searxng_configmap.py "$NAMESPACE" > k8s/rendered/configmap-searxng.yaml
 kubectl apply -f k8s/rendered/configmap-searxng.yaml
 python3 scripts/render_pipelines_configmap.py "$NAMESPACE" > k8s/rendered/configmap-pipelines.yaml
 kubectl apply -f k8s/rendered/configmap-pipelines.yaml
 
 kubectl -n "$NAMESPACE" create configmap keycloak-realm \
-  --from-file=realm-openwebui.json=keycloak/realm-openwebui.json \
+  --from-file=realm-openwebui.json=k8s/rendered/realm-openwebui.json \
   --dry-run=client -o yaml | kubectl apply -f -
 
 kubectl apply -f k8s/rendered/deployment-bridge.yaml
@@ -62,9 +78,12 @@ kubectl apply -f k8s/rendered/deployment-valkey.yaml
 kubectl apply -f k8s/rendered/service-valkey.yaml
 kubectl apply -f k8s/rendered/deployment-searxng.yaml
 kubectl apply -f k8s/rendered/service-searxng.yaml
+kubectl apply -f k8s/rendered/ingress-bridge.yaml
 kubectl apply -f k8s/rendered/ingress-openwebui.yaml
 kubectl apply -f k8s/rendered/ingress-keycloak.yaml
-kubectl apply -f k8s/rendered/ingress-searxng.yaml
+if [[ -n "${SEARXNG_HOST:-}" ]]; then
+  kubectl apply -f k8s/rendered/ingress-searxng.yaml
+fi
 
 kubectl -n "$NAMESPACE" wait --for=condition=available deployment/bridge --timeout=240s
 kubectl -n "$NAMESPACE" wait --for=condition=available deployment/pipelines --timeout=240s
@@ -73,9 +92,14 @@ kubectl -n "$NAMESPACE" wait --for=condition=available deployment/keycloak --tim
 kubectl -n "$NAMESPACE" wait --for=condition=available deployment/searxng --timeout=240s
 kubectl -n "$NAMESPACE" wait --for=condition=available deployment/search-valkey --timeout=240s
 
-kubectl -n "$NAMESPACE" delete job graphrag-index --ignore-not-found
-kubectl apply -f k8s/rendered/job-graphrag-index.yaml
-kubectl -n "$NAMESPACE" wait --for=condition=complete job/graphrag-index --timeout=300s
+if [[ "${RUN_GRAPHRAG_INDEX_JOB}" == "true" ]]; then
+  kubectl -n "$NAMESPACE" delete job graphrag-index --ignore-not-found
+  kubectl apply -f k8s/rendered/job-graphrag-index.yaml
+  JOB_WAIT_TIMEOUT_SECONDS=$((GRAPHRAG_INDEX_TIMEOUT_SECONDS + 120))
+  kubectl -n "$NAMESPACE" wait --for=condition=complete job/graphrag-index --timeout="${JOB_WAIT_TIMEOUT_SECONDS}s"
+else
+  echo "Skipping GraphRAG index job because RUN_GRAPHRAG_INDEX_JOB=${RUN_GRAPHRAG_INDEX_JOB}."
+fi
 
 kubectl -n "$NAMESPACE" port-forward service/bridge 18081:8081 >/tmp/grafrag-bridge-port-forward.log 2>&1 &
 BRIDGE_FORWARD_PID=$!

@@ -56,4 +56,15 @@ sync_llm_env_aliases() {
   if [[ -n "${SCW_LLM_MODEL:-}" ]]; then
     export OPENAI_MODEL="${SCW_LLM_MODEL}"
   fi
+
+  if [[ -z "${OPENAI_EMBEDDING_VECTOR_SIZE:-}" ]]; then
+    case "${OPENAI_EMBEDDING_MODEL:-bge-multilingual-gemma2}" in
+      qwen3-embedding-8b)
+        export OPENAI_EMBEDDING_VECTOR_SIZE=4096
+        ;;
+      *)
+        export OPENAI_EMBEDDING_VECTOR_SIZE=3584
+        ;;
+    esac
+  fi
 }

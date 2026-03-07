@@ -31,6 +31,7 @@ flowchart TD
 5. When an external OpenAI-compatible endpoint is configured, the bridge asks that model to synthesize a final answer from the retrieved context.
 6. The answer is returned to Open WebUI with citations to the local source files.
 7. The bridge can also expose an interactive graph slice at `/graph`, and Open WebUI answers include a clickable link to that page.
+8. When full GraphRAG artifacts are missing, the viewer falls back to a document map built directly from the files under `graphrag/input` instead of failing closed.
 
 The bridge must keep interactive chat responsive. In practice, this repository now applies a bounded request budget:
 
@@ -83,27 +84,29 @@ grafrag-experimentation/
    docker compose up -d --build
    ```
 
-4. Index the sample corpus:
-
-   ```bash
-   ./scripts/index_corpus.sh
-   ```
-
-5. Generate a richer demo corpus from French Wikipedia and run an end-to-end retrieval check:
-
-   ```bash
-   python3 scripts/generate_medieval_wars_corpus.py --clean
-   ./scripts/index_corpus.sh
-   bash scripts/test_medieval_wars_flow.sh
-   ```
-
-6. Open:
+4. Open the stack immediately:
 
 - Open WebUI: `http://localhost:3000`
 - Bridge API: `http://localhost:8081`
 - Graph viewer: `http://localhost:8081/graph`
 - Pipeline service: `http://localhost:9099`
 - Keycloak in optional local SSO mode: `http://localhost:8082`
+
+The graph viewer works at this stage in `document-map fallback` mode, built directly from `graphrag/input`, so local Docker no longer requires a prior GraphRAG indexing run just to make `mygraph` usable.
+
+5. Optionally index the sample corpus when you want the full GraphRAG entity/relationship graph plus `graphrag query`:
+
+   ```bash
+   ./scripts/index_corpus.sh
+   ```
+
+6. Generate a richer demo corpus from French Wikipedia and run an end-to-end retrieval check:
+
+   ```bash
+   python3 scripts/generate_medieval_wars_corpus.py --clean
+   ./scripts/index_corpus.sh
+   bash scripts/test_medieval_wars_flow.sh
+   ```
 
 To test the internet search module locally, start the dedicated profile:
 
@@ -148,6 +151,8 @@ Exported shell variables take precedence over `.env`. If `printenv` already show
 `BRIDGE_PUBLIC_URL` controls the clickable graph link emitted by the bridge and displayed in Open WebUI responses. For local Docker, keep `BRIDGE_PUBLIC_URL=http://localhost:8081`.
 
 The GraphRAG Viewer now expects a valid Keycloak browser session. The HTML shell at `/graph` is public, but the actual graph data endpoints (`/graph/data` and `/graph/raw`) require a valid Keycloak bearer token. The page loads Keycloak automatically, checks the session for the `graphrag-viewer` client, and redirects to login when the session is missing or expired.
+
+When query-ready GraphRAG artifacts are present, the viewer serves the entity graph from `entities.parquet`, `relationships.parquet`, and the related outputs. When they are absent or temporarily unreadable, the same viewer falls back to a lighter document graph built directly from the corpus files. This keeps `mygraph` available in both Docker and Kubernetes before indexing has run.
 
 The browser-side graph rendering is powered by Cytoscape.js. The page attempts to load Cytoscape.js from a CDN with a second CDN fallback. If you run this repository in an air-gapped environment, vendor Cytoscape.js locally and update [`bridge/graph_view.html`](./bridge/graph_view.html) to point at the local asset instead.
 
@@ -225,6 +230,14 @@ Deploy the full stack:
 
 The script renders manifests from [`k8s/base`](./k8s/base), creates secrets, imports the Keycloak realm, generates the pipelines ConfigMap directly from the local [`pipelines`](./pipelines) directory, waits for readiness, then launches smoke and integration checks.
 
+By default, the Kubernetes deploy no longer blocks on `job/graphrag-index`. `mygraph` is expected to stay usable through the document-map fallback, so the GraphRAG indexing job is now opt-in:
+
+```bash
+RUN_GRAPHRAG_INDEX_JOB=true ./deploy/deploy-k8s.sh
+```
+
+Keep `GRAPHRAG_INDEX_TIMEOUT_SECONDS=3600` when you do enable that job on Scaleway; the real GraphRAG CLI runtime on the cluster is longer than the earlier shorter defaults.
+
 The Kubernetes stack now also includes:
 
 - `searxng` as a separate search deployment with configurable replicas
@@ -233,6 +246,26 @@ The Kubernetes stack now also includes:
 - a curated search profile that keeps major privacy-oriented engines first and keeps the rest intentionally constrained
 
 Open WebUI is also preconfigured in Kubernetes to use that in-cluster SearXNG service directly for web search through `http://searxng/search`, so the feature works immediately after deployment without additional manual setup in the admin UI.
+
+To smoke-test that module from a workstation without depending on public DNS, run:
+
+```bash
+bash scripts/test_k8s_web_search.sh
+```
+
+Useful overrides:
+
+- `NAMESPACE=grafrag`
+- `OPENWEBUI_DEPLOYMENT=openwebui`
+- `SEARCH_QUERY="Open WebUI"`
+- `MIN_RESULTS=1`
+- `RUN_API_TEST=true` to exercise `POST /api/v1/retrieval/process/web/search` end to end
+- `CHECK_SEARXNG_LOGS=true` to inspect `searxng` logs produced during the test window
+- `FAIL_ON_ENGINE_REFUSAL=true` to make engine-side refusals such as CAPTCHA, `403`, or `429` fail the script
+- `REQUIRE_API_TEST=true` to fail when no admin user is yet present in the Open WebUI database
+- `RETRY_ATTEMPTS=3` and `RETRY_DELAY_SECONDS=10` if SearXNG rate limiting needs a slower retry cadence
+
+The script execs into the `openwebui` deployment and, by default, validates the in-process Open WebUI web-search helper against the configured in-cluster SearXNG backend. It also inspects `searxng` pod logs from the start of the test and summarizes likely search-engine refusals by engine and category. When you also set `RUN_API_TEST=true`, it will try the authenticated retrieval API end to end and fall back to the helper only if no admin Open WebUI user exists yet.
 
 SearXNG is configured to send outbound requests through three explicit proxy endpoints:
 
@@ -246,7 +279,7 @@ This is intentional. A single Scaleway Kapsule cluster is regional, so a clean m
 - place three forward-proxy egress nodes outside the cluster, one in each target region
 - point SearXNG at those three proxies, letting SearXNG distribute requests across them
 
-The `k8s/base/configmap-searxng.yaml` profile favors privacy-oriented engines such as DuckDuckGo, Brave, Startpage, Qwant, and Mojeek. Bing and Google are also enabled, but with lower weights so the ranking still favors the more privacy-oriented engines first. Google remains the least preferred of the enabled mainstream engines because it is more likely to trigger anti-bot countermeasures in self-hosted metasearch deployments.
+The `k8s/base/configmap-searxng.yaml` profile favors privacy-oriented engines such as Brave, Startpage, Qwant, and Mojeek. Bing and Google are also enabled, but with lower weights so the ranking still favors the more privacy-oriented engines first. Google remains the least preferred of the enabled mainstream engines because it is more likely to trigger anti-bot countermeasures in self-hosted metasearch deployments.
 
 For the `10 egress IPs per exit node` requirement, this repository deliberately amends the initial idea: on Scaleway Instances, a single VM can attach up to five flexible routed IPv4 addresses and up to five public IPv6 addresses. If you strictly need ten IPv4 addresses per region, use two proxy VMs per region or another regional egress pool instead of a single node.
 
@@ -266,6 +299,16 @@ Set these variables when you want the Kubernetes cache sync enabled:
 - `GRAPHRAG_CACHE_S3_REGION=...`
 - `GRAPHRAG_CACHE_S3_ACCESS_KEY_ID=...`
 - `GRAPHRAG_CACHE_S3_SECRET_ACCESS_KEY=...`
+- `GRAPHRAG_INDEX_TIMEOUT_SECONDS=3600` to give the GraphRAG CLI enough time to finish corpus indexing on Kubernetes
+
+## Scaleway Notes
+
+- Build the bridge image for `linux/amd64` on the current Scaleway Kubernetes nodes. The repository defaults `DOCKER_BUILD_PLATFORM` accordingly.
+- Keep the graph viewer deployable without indexing. Full GraphRAG artifacts remain optional for richer graph exploration, not a prerequisite for bringing the stack up.
+- Keycloak behind the ingress must advertise the public hostname and trust forwarded headers (`--hostname=${KEYCLOAK_HOST}` plus `--proxy-headers=xforwarded`), otherwise OIDC redirects and issuer metadata break externally.
+- The current SearXNG profile intentionally excludes DuckDuckGo because it triggered repeated CAPTCHA failures in this deployment. The in-cluster backend also runs with `server.limiter: false` to avoid `429` on Open WebUI backend calls that do not look like browser traffic.
+- Keep rotated Keycloak realm passwords outside Git-tracked realm files. Use the ignored local file `keycloak/realm-passwords.local.json` and render it into Kubernetes at deploy time.
+- Keep manifest rendering on an explicit `envsubst` allowlist. Blindly substituting every `${...}` placeholder in generated configs caused accidental replacements in unrelated config blocks.
 
 For local Docker Compose, the GraphRAG cache now uses a dedicated named Docker volume mounted at `/app/graphrag/cache` instead of the repository working tree.
 
@@ -286,6 +329,10 @@ The realm definition is stored in [`keycloak/realm-openwebui.json`](./keycloak/r
 
 Default test credentials follow the prompt requirements: `userX@test.local` and password `userXpassword`.
 
+For Kubernetes password rotations, the deployment can also consume the ignored
+local file `keycloak/realm-passwords.local.json` so rotated passwords do not
+need to be committed to Git.
+
 ## LLM Backends
 
 The bridge expects an OpenAI-compatible chat endpoint and works with:
@@ -302,6 +349,13 @@ The bridge expects an OpenAI-compatible chat endpoint and works with:
 If the external model is unavailable, the bridge returns a deterministic answer built from the local corpus instead of failing with a blank response.
 
 For the current local defaults, this repository is preconfigured for Scaleway chat plus multilingual embeddings. You still need to set `SCW_SECRET_KEY_LLM` in `.env` before live GraphRAG indexing can call the provider.
+
+For a faster embedding profile on Scaleway, switch to:
+
+- `SCW_LLM_MODEL=mistral-small-3.2-24b-instruct-2506`
+- `OPENAI_EMBEDDING_MODEL=qwen3-embedding-8b`
+
+The repository now infers `OPENAI_EMBEDDING_VECTOR_SIZE` from the embedding model when you leave it unset: `3584` for `bge-multilingual-gemma2` and `4096` for `qwen3-embedding-8b`. You can still override it explicitly when testing another provider or model family.
 
 The bridge and deployment scripts keep compatibility with legacy `OPENAI_*` environment variables, but `SCW_*` is now the primary configuration surface for this repository.
 
@@ -353,5 +407,5 @@ make report
 - The chronological guide works on both vertical and horizontal axes.
 - The viewer centers the graph against the visible browser area, not only the full container box, and the recenter button reuses that same logic.
 - The chronological axis selector is greyed out unless chronological mode is currently active.
-- `GET /graph/raw` downloads the raw `graph.graphml` artifact if you still want to inspect it in Gephi or Cytoscape.
+- `GET /graph/raw` downloads the raw `graph.graphml` artifact when it exists, and otherwise returns a JSON export of the current document-map fallback.
 - The viewer enforces Keycloak-backed access for graph data and triggers a relogin when the Keycloak session has expired.

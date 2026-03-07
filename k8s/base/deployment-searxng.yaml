@@ -21,7 +21,7 @@ spec:
             - name: SEARXNG_SETTINGS_PATH
               value: /etc/searxng/settings.yml
             - name: SEARXNG_BASE_URL
-              value: https://${SEARXNG_HOST}
+              value: http://searxng
             - name: SEARXNG_VALKEY_URL
               value: valkey://search-valkey:6379/0
             - name: SEARXNG_SECRET

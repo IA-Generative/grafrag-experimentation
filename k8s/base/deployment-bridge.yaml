@@ -4,6 +4,8 @@ metadata:
   name: bridge
   namespace: ${NAMESPACE}
 spec:
+  strategy:
+    type: Recreate
   replicas: 1
   selector:
     matchLabels:
@@ -13,6 +15,9 @@ spec:
       labels:
         app: bridge
     spec:
+      enableServiceLinks: false
+      imagePullSecrets:
+        - name: grafrag-registry
       terminationGracePeriodSeconds: 60
       initContainers:
         - name: bootstrap-graphrag

@@ -28,6 +28,51 @@ from models import (
 
 LOGGER = logging.getLogger(__name__)
 TOKEN_PATTERN = re.compile(r"[A-Za-z0-9_/-]{3,}")
+FALLBACK_GRAPH_STOPWORDS = {
+    "about",
+    "avec",
+    "been",
+    "cela",
+    "ces",
+    "dans",
+    "depuis",
+    "des",
+    "does",
+    "dont",
+    "elle",
+    "elles",
+    "entre",
+    "from",
+    "have",
+    "leurs",
+    "mais",
+    "more",
+    "nous",
+    "pour",
+    "quel",
+    "quelle",
+    "quels",
+    "quelles",
+    "same",
+    "sans",
+    "sera",
+    "sont",
+    "that",
+    "their",
+    "them",
+    "these",
+    "this",
+    "tous",
+    "tout",
+    "under",
+    "vers",
+    "vous",
+    "were",
+    "what",
+    "when",
+    "which",
+    "with",
+}
 
 
 @dataclass
@@ -35,6 +80,17 @@ class ScoredDocument:
     path: str
     excerpt: str
     score: int
+
+
+@dataclass
+class FallbackGraphDocument:
+    path: str
+    label: str
+    source_group: str
+    excerpt: str
+    token_count: int
+    tokens: set[str]
+    query_overlap: int
 
 
 class GraphRAGService:
@@ -56,6 +112,7 @@ class GraphRAGService:
             "openai_api_base": self.settings.openai_api_base,
             "openai_model": self.settings.openai_model,
             "openai_embedding_model": self.settings.openai_embedding_model,
+            "openai_embedding_vector_size": self.settings.openai_embedding_vector_size,
             "openai_api_key_configured": self.settings.llm_ready,
             "bridge_public_url": self.settings.bridge_public_url,
             "graph_viewer_auth_required": self.settings.graph_viewer_auth_required,
@@ -183,35 +240,41 @@ class GraphRAGService:
         normalized_query = query.strip()
         normalized_source = source_prefix.strip()
         available_sources = self._available_source_options()
-        download_url = self._graph_download_url()
+        download_url = self._graph_download_url(
+            normalized_query,
+            normalized_source,
+            max_nodes,
+            min_weight,
+        )
 
         if not self._graphrag_query_artifacts_present():
-            return GraphDataResponse(
-                graph_ready=False,
-                query=normalized_query,
-                source_prefix=normalized_source,
-                max_nodes=max_nodes,
-                min_weight=min_weight,
-                available_sources=available_sources,
-                message=(
-                    "Graph artifacts are not ready yet. Run ./scripts/index_corpus.sh first "
-                    "and wait until community reports plus LanceDB tables are generated."
+            return self._fallback_graph_data(
+                normalized_query,
+                normalized_source,
+                max_nodes,
+                min_weight,
+                available_sources,
+                download_url,
+                reason=(
+                    "GraphRAG query-ready artifacts are not available, so the viewer switched "
+                    "to the document-map fallback."
                 ),
-                download_url=download_url,
             )
 
         try:
             import pyarrow.parquet as pq
         except ImportError:
-            return GraphDataResponse(
-                graph_ready=False,
-                query=normalized_query,
-                source_prefix=normalized_source,
-                max_nodes=max_nodes,
-                min_weight=min_weight,
-                available_sources=available_sources,
-                message="pyarrow n'est pas disponible dans l'environnement du bridge.",
-                download_url=download_url,
+            return self._fallback_graph_data(
+                normalized_query,
+                normalized_source,
+                max_nodes,
+                min_weight,
+                available_sources,
+                download_url,
+                reason=(
+                    "pyarrow is not available in the bridge environment, so the viewer "
+                    "switched to the document-map fallback."
+                ),
             )
 
         entities_path = self.settings.graphrag_output_dir / "entities.parquet"
@@ -226,15 +289,17 @@ class GraphRAGService:
             text_units = pq.read_table(text_units_path).to_pylist()
         except Exception as error:  # pragma: no cover - defensive path for corrupt artifacts
             LOGGER.warning("Unable to load graph artifacts: %s", error)
-            return GraphDataResponse(
-                graph_ready=False,
-                query=normalized_query,
-                source_prefix=normalized_source,
-                max_nodes=max_nodes,
-                min_weight=min_weight,
-                available_sources=available_sources,
-                message=f"Graph artifacts could not be loaded: {error}",
-                download_url=download_url,
+            return self._fallback_graph_data(
+                normalized_query,
+                normalized_source,
+                max_nodes,
+                min_weight,
+                available_sources,
+                download_url,
+                reason=(
+                    f"Graph artifacts could not be loaded ({error}), so the viewer switched "
+                    "to the document-map fallback."
+                ),
             )
 
         text_unit_to_documents = self._build_text_unit_document_index(documents)
@@ -322,6 +387,7 @@ class GraphRAGService:
                 message = "Le graphe est disponible, mais aucun lien ne correspond aux filtres actuels."
             return GraphDataResponse(
                 graph_ready=True,
+                graph_kind="entity",
                 query=normalized_query,
                 source_prefix=normalized_source,
                 max_nodes=max_nodes,
@@ -395,6 +461,7 @@ class GraphRAGService:
 
         return GraphDataResponse(
             graph_ready=True,
+            graph_kind="entity",
             query=normalized_query,
             source_prefix=normalized_source,
             max_nodes=max_nodes,
@@ -408,9 +475,212 @@ class GraphRAGService:
             download_url=download_url,
         )
 
+    def _fallback_graph_data(
+        self,
+        query: str,
+        source_prefix: str,
+        max_nodes: int,
+        min_weight: float,
+        available_sources: list[GraphSourceOption],
+        download_url: str,
+        *,
+        reason: str = "",
+    ) -> GraphDataResponse:
+        query_tokens = set(self._tokenize(query))
+        documents = self._load_fallback_graph_documents(source_prefix, query_tokens)
+
+        if not documents:
+            if self._corpus_has_documents():
+                message = (
+                    f"No corpus documents matched the source filter '{source_prefix}'."
+                    if source_prefix
+                    else "The viewer could not build a document-map fallback from the corpus."
+                )
+                return GraphDataResponse(
+                    graph_ready=True,
+                    graph_kind="document",
+                    query=query,
+                    source_prefix=source_prefix,
+                    max_nodes=max_nodes,
+                    min_weight=min_weight,
+                    available_sources=available_sources,
+                    message=self._append_graph_reason(message, reason),
+                    download_url=download_url,
+                )
+
+            return GraphDataResponse(
+                graph_ready=False,
+                graph_kind="document",
+                query=query,
+                source_prefix=source_prefix,
+                max_nodes=max_nodes,
+                min_weight=min_weight,
+                available_sources=available_sources,
+                message=self._append_graph_reason(
+                    "No local documents were found under graphrag/input.", reason
+                ),
+                download_url=download_url,
+            )
+
+        if query_tokens:
+            documents.sort(
+                key=lambda document: (
+                    -(1 if document.query_overlap > 0 else 0),
+                    -document.query_overlap,
+                    -document.token_count,
+                    document.path,
+                )
+            )
+        else:
+            documents.sort(key=lambda document: (document.source_group, document.path))
+
+        selected_documents = documents[:max_nodes]
+        token_frequency: dict[str, int] = {}
+        for document in selected_documents:
+            for token in document.tokens:
+                token_frequency[token] = token_frequency.get(token, 0) + 1
+
+        max_shared_frequency = max(3, max(2, len(selected_documents) // 2))
+        edges: list[GraphEdge] = []
+        degrees: dict[str, int] = {}
+
+        for index, left in enumerate(selected_documents):
+            for right in selected_documents[index + 1 :]:
+                shared_tokens = left.tokens & right.tokens
+                if not shared_tokens and left.source_group != right.source_group:
+                    continue
+
+                query_shared = sorted(shared_tokens & query_tokens)
+                informative_shared = sorted(
+                    token
+                    for token in shared_tokens
+                    if token in query_tokens
+                    or token_frequency.get(token, 0) <= max_shared_frequency
+                )
+
+                weight = 0.0
+                reasons: list[str] = []
+                if left.source_group == right.source_group and left.source_group != "unknown":
+                    weight += 1.0
+                    reasons.append(f"Same corpus group: {left.source_group}")
+                if query_shared:
+                    weight += float(len(query_shared) * 3)
+                    reasons.append(
+                        "Question terms in common: "
+                        + ", ".join(query_shared[:4])
+                    )
+
+                lexical_shared = [
+                    token for token in informative_shared if token not in query_tokens
+                ]
+                if lexical_shared:
+                    weight += float(min(len(lexical_shared), 4))
+                    reasons.append(
+                        "Lexical overlap: " + ", ".join(lexical_shared[:4])
+                    )
+
+                if weight < min_weight:
+                    continue
+
+                left_fragment = GraphFragment(
+                    id=f"{left.path}#excerpt",
+                    text=left.excerpt,
+                    token_count=left.token_count,
+                    document_paths=[left.path],
+                )
+                right_fragment = GraphFragment(
+                    id=f"{right.path}#excerpt",
+                    text=right.excerpt,
+                    token_count=right.token_count,
+                    document_paths=[right.path],
+                )
+                edges.append(
+                    GraphEdge(
+                        source=left.path,
+                        target=right.path,
+                        description=" | ".join(reasons) or "Document relationship",
+                        weight=weight,
+                        document_paths=sorted({left.path, right.path}),
+                        fragments=[left_fragment, right_fragment],
+                    )
+                )
+                degrees[left.path] = degrees.get(left.path, 0) + 1
+                degrees[right.path] = degrees.get(right.path, 0) + 1
+
+        nodes = [
+            GraphNode(
+                id=document.path,
+                label=document.label,
+                entity_type="document",
+                description=document.excerpt,
+                degree=degrees.get(document.path, 0),
+                frequency=document.query_overlap if query_tokens else document.token_count,
+                size=float(
+                    max(
+                        12,
+                        min(
+                            34,
+                            12
+                            + (degrees.get(document.path, 0) * 2)
+                            + min(document.query_overlap, 6),
+                        ),
+                    )
+                ),
+                source_group=document.source_group,
+                document_paths=[document.path],
+                fragments=[
+                    GraphFragment(
+                        id=f"{document.path}#excerpt",
+                        text=document.excerpt,
+                        token_count=document.token_count,
+                        document_paths=[document.path],
+                    )
+                ],
+            )
+            for document in selected_documents
+        ]
+
+        if query_tokens and any(document.query_overlap > 0 for document in selected_documents):
+            message = (
+                "Document-map fallback built directly from corpus files for the current "
+                "question, without requiring GraphRAG indexing."
+            )
+        elif query_tokens:
+            message = (
+                "Document-map fallback built from the local corpus, but no file matched the "
+                "question terms exactly."
+            )
+        elif source_prefix:
+            message = (
+                f"Document-map fallback filtered to corpus group '{source_prefix}', without "
+                "requiring GraphRAG indexing."
+            )
+        else:
+            message = (
+                "Document-map fallback built directly from the local corpus, without "
+                "requiring GraphRAG indexing."
+            )
+
+        return GraphDataResponse(
+            graph_ready=True,
+            graph_kind="document",
+            query=query,
+            source_prefix=source_prefix,
+            max_nodes=max_nodes,
+            min_weight=min_weight,
+            total_nodes=len(nodes),
+            total_edges=len(edges),
+            available_sources=available_sources,
+            nodes=nodes,
+            edges=edges,
+            message=self._append_graph_reason(message, reason),
+            download_url=download_url,
+        )
+
     def index(self, request: IndexRequest) -> IndexResponse:
         self._ensure_layout()
         manifest_path = self.settings.graphrag_output_dir / "index-manifest.json"
+        failure_details = ""
 
         if self._graphrag_cli_available():
             cli_result = self._run_command(
@@ -419,25 +689,46 @@ class GraphRAGService:
                     "index",
                     "--root",
                     str(self.settings.graphrag_root),
-                ]
+                ],
+                timeout_seconds=self.settings.graphrag_index_timeout_seconds,
             )
             if cli_result and cli_result.returncode == 0:
-                details = "GraphRAG CLI indexing completed successfully."
-                if manifest_path.exists():
-                    details = (
-                        f"{details} Existing manifest retained at {manifest_path}."
+                if self._graphrag_query_artifacts_present():
+                    details = "GraphRAG CLI indexing completed successfully."
+                    if manifest_path.exists():
+                        details = (
+                            f"{details} Existing manifest retained at {manifest_path}."
+                        )
+                    return IndexResponse(
+                        status="ok",
+                        engine_used="graphrag-cli",
+                        details=details,
                     )
-                return IndexResponse(
-                    status="ok",
-                    engine_used="graphrag-cli",
-                    details=details,
+                failure_details = (
+                    "GraphRAG CLI completed but did not produce the required query-ready "
+                    "artifacts (entities, relationships, communities, community reports, "
+                    "GraphML, LanceDB)."
                 )
+            else:
+                failure_details = (
+                    "GraphRAG CLI indexing did not complete successfully within "
+                    f"{self.settings.graphrag_index_timeout_seconds}s."
+                )
+        else:
+            failure_details = "GraphRAG CLI is not available in the current environment."
+
+        if request.strict:
+            return IndexResponse(
+                status="error",
+                engine_used="graphrag-cli",
+                details=failure_details,
+            )
 
         manifest = self._write_manifest(rebuild=request.rebuild)
         return IndexResponse(
             status="ok",
             engine_used="fallback-manifest",
-            details=f"Generated a lightweight manifest at {manifest}.",
+            details=f"{failure_details} Generated a lightweight manifest at {manifest}.",
         )
 
     def _ensure_layout(self) -> None:
@@ -519,6 +810,10 @@ class GraphRAGService:
         env["OPENAI_API_BASE"] = self.settings.openai_api_base
         env["OPENAI_API_KEY"] = self.settings.openai_api_key
         env["OPENAI_MODEL"] = self.settings.openai_model
+        env["OPENAI_EMBEDDING_MODEL"] = self.settings.openai_embedding_model
+        env["OPENAI_EMBEDDING_VECTOR_SIZE"] = str(
+            self.settings.openai_embedding_vector_size
+        )
 
         try:
             result = subprocess.run(
@@ -719,8 +1014,24 @@ class GraphRAGService:
         suffix = f"?{urlencode(params)}" if params else ""
         return f"{self.settings.bridge_public_url.rstrip('/')}/graph{suffix}"
 
-    def _graph_download_url(self) -> str:
-        return f"{self.settings.bridge_public_url.rstrip('/')}/graph/raw"
+    def _graph_download_url(
+        self,
+        query: str = "",
+        source_prefix: str = "",
+        max_nodes: int = 80,
+        min_weight: float = 1.0,
+    ) -> str:
+        params: dict[str, str] = {}
+        if query.strip():
+            params["query"] = query.strip()
+        if source_prefix.strip():
+            params["source_prefix"] = source_prefix.strip()
+        if max_nodes != 80:
+            params["max_nodes"] = str(max_nodes)
+        if min_weight != 1.0:
+            params["min_weight"] = str(min_weight)
+        suffix = f"?{urlencode(params)}" if params else ""
+        return f"{self.settings.bridge_public_url.rstrip('/')}/graph/raw{suffix}"
 
     def _available_source_options(self) -> list[GraphSourceOption]:
         options = [GraphSourceOption(id="", label="All documents")]
@@ -741,6 +1052,62 @@ class GraphRAGService:
         for prefix in sorted(prefixes):
             options.append(GraphSourceOption(id=prefix, label=prefix))
         return options
+
+    def _corpus_has_documents(self) -> bool:
+        return any(path.is_file() for path in self.settings.graphrag_input_dir.rglob("*"))
+
+    def _load_fallback_graph_documents(
+        self, source_prefix: str, query_tokens: set[str]
+    ) -> list[FallbackGraphDocument]:
+        documents: list[FallbackGraphDocument] = []
+
+        for path in sorted(self.settings.graphrag_input_dir.rglob("*")):
+            if not path.is_file():
+                continue
+
+            relative_path = str(path.relative_to(self.settings.graphrag_root))
+            if source_prefix and not self._source_matches(relative_path, source_prefix):
+                continue
+
+            try:
+                text = path.read_text(encoding="utf-8", errors="ignore")
+            except OSError as error:
+                LOGGER.debug("Skipping unreadable corpus file %s: %s", path, error)
+                continue
+
+            excerpt = self._excerpt(text, limit=360)
+            token_source = f"{relative_path}\n{text[:12000]}"
+            tokens = {
+                token
+                for token in self._tokenize(token_source)
+                if token not in FALLBACK_GRAPH_STOPWORDS
+            }
+            token_count = len(self._tokenize(text[:12000]))
+            if not excerpt and not tokens:
+                continue
+
+            documents.append(
+                FallbackGraphDocument(
+                    path=relative_path,
+                    label=path.stem or path.name,
+                    source_group=self._source_group_for_path(relative_path),
+                    excerpt=excerpt or relative_path,
+                    token_count=token_count,
+                    tokens=tokens,
+                    query_overlap=len(tokens & query_tokens),
+                )
+            )
+
+        return documents
+
+    def _append_graph_reason(self, message: str, reason: str) -> str:
+        base_message = message.strip()
+        normalized_reason = reason.strip()
+        if not normalized_reason:
+            return base_message
+        if not base_message:
+            return normalized_reason
+        return f"{base_message} Cause: {normalized_reason}"
 
     def _build_text_unit_document_index(
         self, documents: list[dict[str, object]]

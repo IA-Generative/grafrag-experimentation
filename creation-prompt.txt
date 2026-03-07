@@ -42,6 +42,7 @@ Le projet doit permettre :
 - d’exposer ce pipeline comme modèle réellement consommable par Open WebUI via l’API OpenAI-compatible du service pipelines
 - d’utiliser par défaut un corpus GraphRAG local sous graphrag/input, distinct des espaces documentaires d’Open WebUI tant qu’aucune synchronisation explicite n’est réellement implémentée
 - d’exposer un visualiseur interactif du graphe GraphRAG, accessible par URL et exploitable depuis Open WebUI via un lien renvoyé par le pipeline
+- de faire en sorte que ce visualiseur reste utile même sans index GraphRAG complet : si les artefacts `entities.parquet` / `relationships.parquet` / `graph.graphml` ne sont pas encore prêts, le bridge doit fournir un graphe documentaire de secours construit directement depuis les fichiers du corpus
 - de prévoir une image de modèle Open WebUI issue de la mascotte, appliquée explicitement via `meta.profile_image_url` sur les entrées de modèles GraphRAG ou leurs overrides/aliases
 - d’utiliser un SSO Keycloak en environnement Kubernetes
 - d’automatiser le build, le déploiement, les tests et les vérifications de sécurité
@@ -480,6 +481,17 @@ https://openwebui-sso.fake-domain.change.me/
 
 Les certificats TLS doivent être générés automatiquement avec Let's Encrypt via cert-manager.
 
+Si Keycloak et Open WebUI sont publiés derrière ingress-nginx, le repository généré doit anticiper la taille des en-têtes de réponse OIDC, notamment les cookies de session et certaines redirections avec `redirect_uri` longue.
+
+Au minimum, les ingress concernés doivent prévoir un buffer de proxy suffisant, par exemple :
+
+- `nginx.ingress.kubernetes.io/proxy-buffer-size: "32k"`
+- et, si nécessaire, un réglage cohérent de `proxy-buffers-number`
+
+Sinon un login OIDC valide peut échouer avec un `502` sur l’authorization endpoint Keycloak via l’ingress, avec un log NGINX du type :
+
+- `upstream sent too big header while reading response header from upstream`
+
 Si la version GraphRAG embarquée ne propose pas nativement un backend de cache S3, le repository ne doit pas prétendre le supporter directement.
 
 Dans ce cas, la solution attendue en Kubernetes est pragmatique :
@@ -762,6 +774,13 @@ Si le profil SSO local est lancé, les tests doivent aussi vérifier :
 - si un client Keycloak graphrag-viewer est configuré, un vrai access token obtenu depuis Keycloak permet d’appeler /graph/data et /graph/raw avec succès
 - la page /graph doit charger une configuration cohérente avec Keycloak local et déclencher un login-required quand la session navigateur est absente
 
+En Kubernetes, si le repository publie Open WebUI et Keycloak derrière ingress-nginx, la validation doit aussi vérifier :
+
+- qu’un appel au moins vers l’authorization endpoint Keycloak public ne retourne pas `502`
+- qu’un flux OIDC avec `redirect_uri` longue reste fonctionnel pour un client comme `graphrag-viewer`
+- que les logs récents du contrôleur ingress-nginx ne contiennent pas `upstream sent too big header while reading response header from upstream`
+- que les manifests d’ingress Keycloak et Open WebUI configurent un `proxy-buffer-size` suffisant, par exemple `32k`
+
 Le repository généré doit aussi proposer un test bout en bout dédié au corpus de démonstration qui :
 
 - génère le corpus Wikipédia
@@ -946,6 +965,12 @@ explication que les comptes Keycloak de test doivent pouvoir créer leur compte 
 
 explication qu’une erreur 403 après callback OIDC peut venir de ENABLE_OAUTH_SIGNUP=false
 
+explication qu’un `502` sur `/realms/.../protocol/openid-connect/auth` derrière ingress-nginx peut venir d’en-têtes OIDC trop volumineux côté Keycloak, et non d’un pod bridge en panne
+
+explication que le diagnostic associé côté ingress-nginx peut contenir `upstream sent too big header while reading response header from upstream`
+
+explication qu’en Kubernetes les ingress Keycloak et Open WebUI doivent prévoir un `nginx.ingress.kubernetes.io/proxy-buffer-size` suffisant, par exemple `32k`, pour éviter ce cas
+
 explication qu’il faut éviter les variables dupliquées et contradictoires dans .env et .env.example
 
 explication que les variables exportées du shell priment sur .env
@@ -973,6 +998,27 @@ explication que la vue chronologique doit supporter à la fois un axe vertical e
 explication que le visualiseur affiche la question complète sous le champ "Votre question" pour éviter la troncature visuelle
 
 explication que create_community_reports peut être suivi d’une phase supplémentaire generate_text_embeddings, et que le repository ne doit pas considérer l’index comme totalement prêt avant la fin de cette phase et la création des tables lancedb
+
+--------------------------------------------------
+
+RETOURS D’EXPLOITATION A INTEGRER DES LE DEPART
+
+Le repository généré doit intégrer explicitement les leçons suivantes au lieu de les découvrir plus tard en exploitation :
+
+- le déploiement Kubernetes ne doit pas exiger une indexation GraphRAG bloquante pour être considéré comme réussi
+- `deploy/deploy-k8s.sh` doit déployer la stack et rendre `mygraph` utilisable sans attendre `job/graphrag-index`
+- le job d’indexation GraphRAG doit rester disponible mais devenir opt-in, par exemple via `RUN_GRAPHRAG_INDEX_JOB=true`
+- la documentation doit expliquer que la visualisation de secours est un graphe documentaire de corpus, tandis que le graphe GraphRAG complet reste optionnel
+- quand l’indexation complète est activée sur Scaleway Kubernetes, il faut prévoir un timeout long, de l’ordre de `3600s`, car un corpus réel peut dépasser largement les timeouts trop courts
+- l’image `bridge` doit être buildée explicitement en `linux/amd64` pour le cluster Scaleway ciblé si les nœuds ne sont pas homogènes avec la machine de build
+- le déploiement Keycloak derrière ingress doit utiliser le bon hostname public et des headers proxy fiables ; en pratique il faut prévoir `--hostname=<host public>` et `--proxy-headers=xforwarded`
+- la configuration OIDC ne doit jamais produire des redirections du type `http://https//...` ; le repository doit vérifier ce flux en test
+- le module SearXNG doit refléter les contraintes réelles d’exploitation observées : DuckDuckGo peut être trop instable à cause des CAPTCHA et doit pouvoir être retiré proprement du profil par défaut
+- pour des appels backend Open WebUI -> SearXNG en HTTP interne, le limiter SearXNG peut renvoyer des `429` même quand le service semble sain ; le repository doit soit désactiver ce limiter pour le trafic interne, soit séparer un endpoint interne non limité d’un endpoint public protégé
+- le repository doit inclure un test Kubernetes de recherche web qui regarde aussi les logs SearXNG et résume les refus moteur (`CAPTCHA`, `403`, `429`, `blocked`, `refused`)
+- la rotation des mots de passe Keycloak du realm ne doit jamais écrire les secrets rotatés dans les fichiers versionnés ; il faut un store local ignoré par Git, par exemple `keycloak/realm-passwords.local.json`
+- le rendu des manifests ne doit pas faire un `envsubst` global sans garde-fou ; il faut limiter explicitement la liste des variables autorisées pour éviter des substitutions accidentelles
+- la documentation doit expliquer que les URL temporaires Keycloak `login-actions/authenticate?...session_code=...` sont jetables et qu’une erreur `invalid_code` après redémarrage n’implique pas nécessairement un bug persistant
 
 Scaleway Generative APIs
 

@@ -23,14 +23,23 @@ spec:
             - secretRef:
                 name: grafrag-secrets
           env:
+            - name: ENABLE_LOGIN_FORM
+              value: "false"
             - name: ENABLE_SIGNUP
               value: "false"
             - name: ENABLE_OAUTH_SIGNUP
+              value: "true"
+            - name: OAUTH_MERGE_ACCOUNTS_BY_EMAIL
               value: "true"
             - name: OAUTH_PROVIDER_NAME
               value: "Keycloak"
             - name: OAUTH_CLIENT_ID
               value: "openwebui"
+            - name: OAUTH_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: grafrag-secrets
+                  key: KEYCLOAK_CLIENT_SECRET
             - name: OAUTH_SCOPES
               value: "openid profile email"
             - name: OPENAI_API_BASE_URL

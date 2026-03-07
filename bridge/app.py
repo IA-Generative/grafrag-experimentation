@@ -2,9 +2,9 @@ import json
 import logging
 from pathlib import Path
 
-from fastapi import Body, Depends, FastAPI, HTTPException, Query
+from fastapi import Body, Depends, FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from auth import get_graph_viewer_auth
@@ -92,12 +92,32 @@ def graph_data(
 
 @app.get("/graph/raw", tags=["graph"])
 def graph_raw(
+    query: str = Query(default=""),
+    source_prefix: str = Query(default=""),
+    max_nodes: int = Query(default=80, ge=10, le=200),
+    min_weight: float = Query(default=1.0, ge=0.0, le=100.0),
     _: dict[str, object] | None = Depends(graph_viewer_auth.require_viewer_token),
-) -> FileResponse:
+) -> Response:
     graphml_path = settings.graphrag_output_dir / "graph.graphml"
     if not graphml_path.exists():
-        raise HTTPException(status_code=404, detail="GraphML artifact not found.")
-    return FileResponse(graphml_path, media_type="application/graphml+xml")
+        payload = service.graph_data(
+            query=query,
+            source_prefix=source_prefix,
+            max_nodes=max_nodes,
+            min_weight=min_weight,
+        )
+        return Response(
+            content=payload.model_dump_json(indent=2),
+            media_type="application/json",
+            headers={
+                "Content-Disposition": 'attachment; filename="graphe-documentaire.json"'
+            },
+        )
+    return FileResponse(
+        graphml_path,
+        media_type="application/graphml+xml",
+        filename="graphe.graphml",
+    )
 
 
 @app.post("/query", response_model=QueryResponse, tags=["query"])

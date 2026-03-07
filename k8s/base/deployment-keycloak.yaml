@@ -19,7 +19,8 @@ spec:
           args:
             - start-dev
             - --import-realm
-            - --hostname=https://${KEYCLOAK_HOST}
+            - --hostname=${KEYCLOAK_HOST}
+            - --proxy-headers=xforwarded
           env:
             - name: KEYCLOAK_ADMIN
               value: "${KEYCLOAK_ADMIN}"
@@ -45,4 +46,3 @@ spec:
         - name: keycloak-realm
           configMap:
             name: keycloak-realm
-

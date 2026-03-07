@@ -6,6 +6,11 @@ from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 PLACEHOLDER_VALUES = {"", "CHANGE_ME", "EXAMPLE_ONLY", "REPLACE_ME"}
+DEFAULT_EMBEDDING_VECTOR_SIZE = 3584
+EMBEDDING_VECTOR_SIZES = {
+    "bge-multilingual-gemma2": 3584,
+    "qwen3-embedding-8b": 4096,
+}
 
 
 class Settings(BaseSettings):
@@ -44,6 +49,10 @@ class Settings(BaseSettings):
     )
     openai_embedding_model: str = Field(
         default="bge-multilingual-gemma2", validation_alias="OPENAI_EMBEDDING_MODEL"
+    )
+    openai_embedding_vector_size: int = Field(
+        default=DEFAULT_EMBEDDING_VECTOR_SIZE,
+        validation_alias="OPENAI_EMBEDDING_VECTOR_SIZE",
     )
     graphrag_root: Path = Field(
         default=Path("/app/graphrag"), validation_alias="GRAPHRAG_ROOT"
@@ -92,6 +101,9 @@ class Settings(BaseSettings):
     graphrag_cli_timeout_seconds: int = Field(
         default=30, validation_alias="GRAPHRAG_CLI_TIMEOUT_SECONDS"
     )
+    graphrag_index_timeout_seconds: int = Field(
+        default=3600, validation_alias="GRAPHRAG_INDEX_TIMEOUT_SECONDS"
+    )
     llm_timeout_seconds: int = Field(
         default=20, validation_alias="LLM_TIMEOUT_SECONDS"
     )
@@ -112,6 +124,11 @@ class Settings(BaseSettings):
             self.openai_api_key = os.environ["SCW_SECRET_KEY_LLM"]
         if "openai_model" not in values and os.getenv("SCW_LLM_MODEL"):
             self.openai_model = os.environ["SCW_LLM_MODEL"]
+        if not os.getenv("OPENAI_EMBEDDING_VECTOR_SIZE"):
+            self.openai_embedding_vector_size = EMBEDDING_VECTOR_SIZES.get(
+                self.openai_embedding_model,
+                DEFAULT_EMBEDDING_VECTOR_SIZE,
+            )
 
     @property
     def llm_ready(self) -> bool:

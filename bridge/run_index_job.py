@@ -4,7 +4,9 @@ from service import GraphRAGService
 
 
 def main() -> int:
-    result = GraphRAGService(get_settings()).index(IndexRequest(rebuild=True))
+    result = GraphRAGService(get_settings()).index(
+        IndexRequest(rebuild=True, strict=True)
+    )
     print(result.model_dump_json())
     return 0 if result.status == "ok" else 1
 

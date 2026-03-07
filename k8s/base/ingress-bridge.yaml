@@ -1,7 +1,7 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: searxng
+  name: bridge
   namespace: ${NAMESPACE}
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod
@@ -10,16 +10,16 @@ spec:
   ingressClassName: nginx
   tls:
     - hosts:
-        - ${SEARXNG_HOST}
-      secretName: ${SEARXNG_TLS_SECRET_NAME}
+        - ${BRIDGE_HOST}
+      secretName: ${BRIDGE_TLS_SECRET_NAME}
   rules:
-    - host: ${SEARXNG_HOST}
+    - host: ${BRIDGE_HOST}
       http:
         paths:
           - path: /
             pathType: Prefix
             backend:
               service:
-                name: searxng
+                name: bridge
                 port:
-                  number: 80
+                  number: 8081

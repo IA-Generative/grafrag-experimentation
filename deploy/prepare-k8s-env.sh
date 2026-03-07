@@ -13,6 +13,24 @@ source "${ROOT_DIR}/scripts/load_env.sh"
 load_dotenv_preserve_existing "${ROOT_DIR}/.env"
 sync_llm_env_aliases
 
+: "${GRAPHRAG_INDEX_TIMEOUT_SECONDS:=3600}"
+export GRAPHRAG_INDEX_TIMEOUT_SECONDS
+
+: "${RUN_GRAPHRAG_INDEX_JOB:=false}"
+export RUN_GRAPHRAG_INDEX_JOB
+
+if [[ -z "${OPENAI_EMBEDDING_VECTOR_SIZE:-}" ]]; then
+  case "${OPENAI_EMBEDDING_MODEL:-bge-multilingual-gemma2}" in
+    qwen3-embedding-8b)
+      OPENAI_EMBEDDING_VECTOR_SIZE=4096
+      ;;
+    *)
+      OPENAI_EMBEDDING_VECTOR_SIZE=3584
+      ;;
+  esac
+fi
+export OPENAI_EMBEDDING_VECTOR_SIZE
+
 required_vars=(
   NAMESPACE
   REGISTRY
@@ -21,18 +39,14 @@ required_vars=(
   PIPELINES_IMAGE
   SEARXNG_IMAGE
   VALKEY_IMAGE
+  BRIDGE_HOST
   OPENWEBUI_HOST
   KEYCLOAK_HOST
-  SEARXNG_HOST
-  SEARXNG_TLS_SECRET_NAME
   LETSENCRYPT_EMAIL
   KEYCLOAK_ADMIN
   SEARXNG_SECRET
   SCW_LLM_BASE_URL
   SCW_LLM_MODEL
-  SEARXNG_OUTBOUND_PROXY_PAR_URL
-  SEARXNG_OUTBOUND_PROXY_AMS_URL
-  SEARXNG_OUTBOUND_PROXY_WAW_URL
 )
 
 missing=0
@@ -44,6 +58,11 @@ for var_name in "${required_vars[@]}"; do
 done
 
 if [[ "$missing" -ne 0 ]]; then
+  exit 1
+fi
+
+if [[ -n "${SEARXNG_HOST:-}" && -z "${SEARXNG_TLS_SECRET_NAME:-}" ]]; then
+  echo "Missing required variable: SEARXNG_TLS_SECRET_NAME" >&2
   exit 1
 fi
 

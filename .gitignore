@@ -40,3 +40,5 @@ secret.yaml
 secret-*.yaml
 !secret.example.yaml
 !k8s/base/secret.example.yaml
+keycloak/realm-passwords.local.json
+keycloak/password-rotation*.json

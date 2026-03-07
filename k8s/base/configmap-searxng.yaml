@@ -8,7 +8,6 @@ data:
     use_default_settings:
       engines:
         keep_only:
-          - duckduckgo
           - brave
           - startpage
           - qwant
@@ -23,13 +22,13 @@ data:
 
     search:
       safe_search: 1
-      autocomplete: "duckduckgo"
+      autocomplete: ""
       formats:
         - html
         - json
 
     server:
-      limiter: true
+      limiter: false
       image_proxy: true
       public_instance: false
 
@@ -54,8 +53,6 @@ data:
           - ${SEARXNG_OUTBOUND_PROXY_WAW_URL}
 
     engines:
-      - name: duckduckgo
-        weight: 1.4
       - name: brave
         weight: 1.3
       - name: startpage

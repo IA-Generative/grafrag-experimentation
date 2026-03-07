@@ -14,3 +14,24 @@ Realm settings:
 
 The client secret in the realm export is intentionally set to `CHANGE_ME`. Replace it through Kubernetes secrets or environment variables before using real SSO flows.
 
+For Kubernetes, rotated realm user passwords are kept in the ignored local file
+`keycloak/realm-passwords.local.json`. The tracked realm JSON files keep the
+default demo credentials so rotated secrets are not meant to be committed.
+
+Rotate the realm user passwords on Kubernetes and keep the bootstrap files in sync:
+
+```bash
+python3 scripts/rotate_keycloak_passwords.py \
+  --output /tmp/keycloak-password-rotation.json
+```
+
+By default the script:
+
+- rotates every user declared in `realm-openwebui.k8s.json`
+- updates `keycloak/realm-passwords.local.json`
+- re-applies the Kubernetes `keycloak-realm` ConfigMap
+- updates the live Keycloak users through `kcadm.sh`
+- restarts the `keycloak` deployment so the new passwords survive the next pod recreation
+
+Use `--users user1,user2` to limit the rotation to specific users.
+The script does not rotate the technical `KEYCLOAK_ADMIN_PASSWORD` secret.
