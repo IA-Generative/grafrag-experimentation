@@ -121,6 +121,13 @@ In horizontal chronological mode, the timeline guide is positioned relative to t
 
 The `Axe chronologique` control is intentionally greyed out and disabled unless chronological view is the active reading mode.
 
+The viewer also includes a synthesis workflow aimed at people who need to build a note from part of the corpus:
+
+- the detail panel exposes actual GraphRAG text fragments coming from `text_units.parquet`
+- fragments can be retained without reusing the source-group fill colors already used by the legend
+- a `Synthèse en cours` basket keeps the retained excerpts and their sources visible
+- the export area can download either the selected fragments or a Markdown prompt ready to replay in another LLM
+
 Brand assets for the viewer live in [`bridge/assets`](./bridge/assets). The master image is [`bridge/assets/mirai-graphrag.png`](./bridge/assets/mirai-graphrag.png); regenerate the reduced PNGs, favicon, Apple touch icon, Android icons, and the dedicated Open WebUI model avatar (`mirai-model-avatar-128.png`) with `python3 scripts/generate_brand_assets.py`.
 
 Open WebUI model aliases/overrides can carry their own image via `meta.profile_image_url`. This repository reprovisions the two GraphRAG model entries (`graphrag-bridge.graphrag-local` and `graphrag-bridge.graphrag-global`) with a mascot-based image using:
@@ -131,7 +138,7 @@ python3 scripts/provision_openwebui_model_aliases.py
 
 The script deprovisions previous GraphRAG overrides, then recreates them in [`openwebui/data/webui.db`](./openwebui/data/webui.db) with:
 
-- names `MirAI Local` and `MirAI Global`
+- names `MirAI GraphRAG Local` and `MirAI GraphRAG Global`
 - a `profile_image_url` pointing to `${BRIDGE_PUBLIC_URL}/assets/mirai-model-avatar-128.png`
 - short descriptive metadata and tags
 
@@ -271,6 +278,7 @@ make report
 - `GET /graph/data` serves a filtered JSON subgraph backed by `entities.parquet` and `relationships.parquet`.
 - `GET /graph` serves a Cytoscape.js-based interactive viewer in French, styled with a DSFR-like visual direction.
 - The viewer lets you edit the full current question directly in `Votre question`, and can reopen Open WebUI with that question prefilled through `?q=...` for immediate reuse.
+- The detail panel can expose GraphRAG text fragments, the right panel keeps a `Synthèse en cours` basket, and the export area can download the retained fragments or a composite Markdown prompt for reuse in another LLM.
 - The chronological guide works on both vertical and horizontal axes.
 - The viewer centers the graph against the visible browser area, not only the full container box, and the recenter button reuses that same logic.
 - The chronological axis selector is greyed out unless chronological mode is currently active.

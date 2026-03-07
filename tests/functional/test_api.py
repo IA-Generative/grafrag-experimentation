@@ -33,6 +33,8 @@ def test_graph_page_is_reachable(bridge_base_url: str) -> None:
     assert "/assets/favicon-32x32.png" in response.text
     assert "/assets/mirai-graphrag-256.png" in response.text
     assert "Relancer dans le chat" in response.text
+    assert "Synthèse en cours" in response.text
+    assert "Télécharger les fragments sélectionnés" in response.text
     assert "<textarea" in response.text
 
 

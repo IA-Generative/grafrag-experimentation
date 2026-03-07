@@ -16,6 +16,7 @@ from models import (
     Citation,
     GraphDataResponse,
     GraphEdge,
+    GraphFragment,
     GraphNode,
     GraphSourceOption,
     HealthResponse,
@@ -216,11 +217,13 @@ class GraphRAGService:
         entities_path = self.settings.graphrag_output_dir / "entities.parquet"
         relationships_path = self.settings.graphrag_output_dir / "relationships.parquet"
         documents_path = self.settings.graphrag_output_dir / "documents.parquet"
+        text_units_path = self.settings.graphrag_output_dir / "text_units.parquet"
 
         try:
             entities = pq.read_table(entities_path).to_pylist()
             relationships = pq.read_table(relationships_path).to_pylist()
             documents = pq.read_table(documents_path).to_pylist()
+            text_units = pq.read_table(text_units_path).to_pylist()
         except Exception as error:  # pragma: no cover - defensive path for corrupt artifacts
             LOGGER.warning("Unable to load graph artifacts: %s", error)
             return GraphDataResponse(
@@ -235,6 +238,7 @@ class GraphRAGService:
             )
 
         text_unit_to_documents = self._build_text_unit_document_index(documents)
+        text_unit_index = self._build_text_unit_index(text_units, text_unit_to_documents)
         entity_index = self._build_entity_index(entities, text_unit_to_documents)
         query_tokens = set(self._tokenize(normalized_query))
 
@@ -267,6 +271,24 @@ class GraphRAGService:
                 continue
 
             description = str(relationship.get("description") or "").strip()
+            relationship_fragments = self._fragments_for_text_units(
+                relationship.get("text_unit_ids"),
+                text_unit_index,
+                query_tokens=query_tokens,
+                source_prefix=normalized_source,
+                limit=4,
+            )
+            if not relationship_fragments:
+                relationship_fragments = self._fragments_for_text_units(
+                    [
+                        *list(entity_index.get(source, {}).get("text_unit_ids", [])),
+                        *list(entity_index.get(target, {}).get("text_unit_ids", [])),
+                    ],
+                    text_unit_index,
+                    query_tokens=query_tokens,
+                    source_prefix=normalized_source,
+                    limit=4,
+                )
             edge_match = self._graph_match_score(
                 query_tokens, [source, target, description, *relationship_documents]
             )
@@ -286,6 +308,7 @@ class GraphRAGService:
                         description=description,
                         weight=weight,
                         document_paths=relationship_documents,
+                        fragments=relationship_fragments,
                     ),
                 )
             )
@@ -338,6 +361,13 @@ class GraphRAGService:
             reverse=True,
         ):
             entity = entity_index.get(node_id, {})
+            entity_fragments = self._fragments_for_text_units(
+                entity.get("text_unit_ids"),
+                text_unit_index,
+                query_tokens=query_tokens,
+                source_prefix=normalized_source,
+                limit=5,
+            )
             nodes.append(
                 GraphNode(
                     id=node_id,
@@ -351,6 +381,7 @@ class GraphRAGService:
                         entity.get("document_paths", [])
                     ),
                     document_paths=list(entity.get("document_paths", [])),
+                    fragments=entity_fragments,
                 )
             )
 
@@ -728,6 +759,26 @@ class GraphRAGService:
 
         return index
 
+    def _build_text_unit_index(
+        self,
+        text_units: list[dict[str, object]],
+        text_unit_to_documents: dict[str, set[str]],
+    ) -> dict[str, dict[str, object]]:
+        index: dict[str, dict[str, object]] = {}
+        for text_unit in text_units:
+            text_unit_id = str(text_unit.get("id") or "").strip()
+            if not text_unit_id:
+                continue
+            text = self._normalize_fragment_text(str(text_unit.get("text") or ""))
+            if not text:
+                continue
+            index[text_unit_id] = {
+                "text": text,
+                "token_count": int(text_unit.get("n_tokens") or 0),
+                "document_paths": sorted(text_unit_to_documents.get(text_unit_id, set())),
+            }
+        return index
+
     def _scan_input_document_paths(self) -> dict[str, list[str]]:
         index: dict[str, list[str]] = {}
         for path in sorted(self.settings.graphrag_input_dir.rglob("*")):
@@ -775,14 +826,85 @@ class GraphRAGService:
                     entity.get("text_unit_ids"), text_unit_to_documents
                 )
             )
+            text_unit_ids = [
+                str(text_unit_id)
+                for text_unit_id in (entity.get("text_unit_ids") or [])
+                if str(text_unit_id).strip()
+            ]
             entity_index[title] = {
                 "entity_type": str(entity.get("type") or ""),
                 "description": str(entity.get("description") or ""),
                 "degree": int(entity.get("degree") or 0),
                 "frequency": int(entity.get("frequency") or 0),
                 "document_paths": document_paths,
+                "text_unit_ids": text_unit_ids,
             }
         return entity_index
+
+    def _fragments_for_text_units(
+        self,
+        text_unit_ids: object,
+        text_unit_index: dict[str, dict[str, object]],
+        *,
+        query_tokens: set[str],
+        source_prefix: str,
+        limit: int,
+    ) -> list[GraphFragment]:
+        candidates: list[tuple[int, int, int, GraphFragment]] = []
+        seen: set[str] = set()
+        for text_unit_id in text_unit_ids or []:
+            normalized_id = str(text_unit_id).strip()
+            if not normalized_id or normalized_id in seen:
+                continue
+            seen.add(normalized_id)
+            fragment = text_unit_index.get(normalized_id)
+            if not fragment:
+                continue
+
+            document_paths = list(fragment.get("document_paths", []))
+            if source_prefix and (
+                not document_paths
+                or not any(self._source_matches(path, source_prefix) for path in document_paths)
+            ):
+                continue
+
+            text = str(fragment.get("text") or "")
+            if not text:
+                continue
+
+            score = self._graph_match_score(query_tokens, [text, *document_paths])
+            token_count = int(fragment.get("token_count") or 0)
+            candidates.append(
+                (
+                    score,
+                    len(document_paths),
+                    token_count,
+                    GraphFragment(
+                        id=normalized_id,
+                        text=text,
+                        token_count=token_count,
+                        document_paths=document_paths,
+                    ),
+                )
+            )
+
+        candidates.sort(
+            key=lambda item: (
+                item[0],
+                item[1],
+                item[2],
+                item[3].id,
+            ),
+            reverse=True,
+        )
+        return [item[3] for item in candidates[:limit]]
+
+    def _normalize_fragment_text(self, value: str) -> str:
+        text = value.replace("\r\n", "\n").replace("\r", "\n").strip()
+        if not text:
+            return ""
+        lines = [line.rstrip() for line in text.split("\n")]
+        return "\n".join(lines).strip()
 
     def _document_paths_for_text_units(
         self,

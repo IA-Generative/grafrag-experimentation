@@ -181,6 +181,13 @@ Si le repository choisit d’implémenter ce visualiseur :
 - le centrage initial du graphe et le bouton de recentrage doivent utiliser la zone réellement visible du viewer dans la fenêtre, et non la seule hauteur totale du conteneur Cytoscape
 - si une partie du viewer est hors écran au chargement, le calcul de pan/zoom doit tenir compte de la portion visible dans le viewport navigateur
 - le champ "Axe chronologique" doit être visuellement grisé et désactivé tant que la vue chronologique n’est pas le mode effectivement actif
+- si le visualiseur sert aussi à préparer une synthèse, l’objet de sélection principal doit être le fragment textuel pertinent issu des artefacts GraphRAG, pas seulement le nœud du graphe
+- le panneau de détail peut proposer des cases à cocher ou actions équivalentes pour retenir des fragments liés à l’entité ou au lien sélectionné
+- les éléments retenus pour la synthèse doivent être signalés visuellement dans le graphe sans réutiliser la couleur de remplissage déjà utilisée pour la légende des sources
+- le visualiseur doit pouvoir maintenir un panier ou panneau "Synthèse en cours" listant les fragments retenus et leurs sources
+- la rubrique export doit permettre au minimum de télécharger :
+- les fragments retenus au format Markdown ou texte
+- un prompt composite prêt à rejouer dans un autre LLM, construit uniquement à partir des fragments retenus et de la question de travail
 
 Le bridge FastAPI doit exposer dans /config le modèle chat et le modèle embeddings configurés, sans jamais exposer la clé API brute.
 

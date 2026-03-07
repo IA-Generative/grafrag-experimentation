@@ -11,6 +11,13 @@ class GraphSourceOption(BaseModel):
     label: str
 
 
+class GraphFragment(BaseModel):
+    id: str
+    text: str
+    token_count: int = 0
+    document_paths: list[str] = Field(default_factory=list)
+
+
 class GraphNode(BaseModel):
     id: str
     label: str
@@ -21,6 +28,7 @@ class GraphNode(BaseModel):
     size: float = 1.0
     source_group: str = ""
     document_paths: list[str] = Field(default_factory=list)
+    fragments: list[GraphFragment] = Field(default_factory=list)
 
 
 class GraphEdge(BaseModel):
@@ -29,6 +37,7 @@ class GraphEdge(BaseModel):
     description: str = ""
     weight: float = 0.0
     document_paths: list[str] = Field(default_factory=list)
+    fragments: list[GraphFragment] = Field(default_factory=list)
 
 
 class GraphDataResponse(BaseModel):

@@ -336,6 +336,20 @@
       gap: calc(10px * var(--ui-scale));
     }
 
+    .stack-actions {
+      display: grid;
+      gap: calc(8px * var(--ui-scale));
+      margin-top: calc(12px * var(--ui-scale));
+    }
+
+    .small-button {
+      width: auto;
+      min-height: calc(2.15rem * var(--ui-scale));
+      padding: calc(0.35rem * var(--ui-scale)) calc(0.65rem * var(--ui-scale));
+      font-size: calc(0.8rem * var(--text-scale));
+      line-height: 1.3;
+    }
+
     .actions .compact-action {
       width: auto;
       min-height: calc(2rem * var(--ui-scale));
@@ -560,6 +574,113 @@
 
     .details-body p + p {
       margin-top: calc(10px * var(--ui-scale));
+    }
+
+    .fragment-list,
+    .synthesis-list {
+      display: grid;
+      gap: calc(10px * var(--ui-scale));
+      margin-top: calc(10px * var(--ui-scale));
+    }
+
+    .fragment-card,
+    .synthesis-entry {
+      border: 1px solid #dedeff;
+      border-radius: calc(12px * var(--ui-scale));
+      background: #fbfbff;
+      padding: calc(12px * var(--ui-scale));
+    }
+
+    .fragment-card.is-selected,
+    .synthesis-entry {
+      border-color: rgba(201, 25, 30, 0.35);
+      box-shadow: inset 0 0 0 1px rgba(201, 25, 30, 0.08);
+      background: #fff8f7;
+    }
+
+    .fragment-head,
+    .synthesis-entry-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: calc(10px * var(--ui-scale));
+      margin-bottom: calc(8px * var(--ui-scale));
+    }
+
+    .fragment-head strong,
+    .synthesis-entry-head strong {
+      display: block;
+      color: var(--fr-ink);
+    }
+
+    .fragment-toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: calc(8px * var(--ui-scale));
+      font-weight: 600;
+      color: var(--fr-blue);
+      cursor: pointer;
+    }
+
+    .fragment-toggle input {
+      width: auto;
+      min-height: 0;
+      margin: 0;
+      transform: scale(1.1);
+      accent-color: var(--fr-red);
+    }
+
+    .fragment-body,
+    .synthesis-entry-body {
+      color: var(--fr-ink);
+    }
+
+    .fragment-body p,
+    .synthesis-entry-body p {
+      margin: 0;
+    }
+
+    .fragment-origin,
+    .synthesis-entry-meta {
+      margin-top: calc(8px * var(--ui-scale));
+      color: var(--fr-muted);
+      font-size: calc(0.82rem * var(--text-scale));
+    }
+
+    .fragment-origin strong,
+    .synthesis-entry-meta strong {
+      color: var(--fr-ink);
+      font-weight: 700;
+    }
+
+    .synthesis-summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: calc(10px * var(--ui-scale));
+      flex-wrap: wrap;
+    }
+
+    .synthesis-summary .meta {
+      margin-bottom: 0;
+    }
+
+    .synthesis-mark {
+      display: inline-flex;
+      align-items: center;
+      gap: calc(6px * var(--ui-scale));
+      color: var(--fr-red);
+      font-size: calc(0.8rem * var(--text-scale));
+      font-weight: 700;
+    }
+
+    .synthesis-mark::before {
+      content: "";
+      width: calc(10px * var(--ui-scale));
+      height: calc(10px * var(--ui-scale));
+      border-radius: calc(3px * var(--ui-scale));
+      border: 2px solid var(--fr-red);
+      background: rgba(201, 25, 30, 0.08);
     }
 
     .timeline-guide {
@@ -868,6 +989,12 @@
       <div class="section">
         <h2>Export</h2>
         <p><a id="downloadLink" class="download-link" href="/graph/raw" target="_blank" rel="noreferrer">Télécharger le fichier du graphe</a></p>
+        <div class="stack-actions">
+          <button id="downloadFragmentsButton" class="secondary small-button" type="button">Télécharger les fragments sélectionnés</button>
+          <button id="downloadSynthesisPromptButton" class="secondary small-button" type="button">Télécharger le prompt de synthèse</button>
+          <button id="copySynthesisPromptButton" class="secondary small-button" type="button">Copier le prompt de synthèse</button>
+        </div>
+        <span id="exportHint" class="helper">Sélectionnez des fragments dans le panneau de détail pour préparer un export de synthèse.</span>
       </div>
     </aside>
 
@@ -898,7 +1025,18 @@
         </div>
       </div>
       <div class="section">
+        <div class="synthesis-summary">
+          <h2>Synthèse en cours</h2>
+          <button id="clearSynthesisButton" class="secondary small-button" type="button">Vider</button>
+        </div>
+        <p id="synthesisMeta" class="meta">Aucun fragment retenu pour le moment.</p>
+        <div id="synthesisBody" class="details-body synthesis-body">
+          <p class="empty">Cochez un fragment dans le panneau de détail pour constituer votre dossier de synthèse.</p>
+        </div>
+      </div>
+      <div class="section">
         <h2>Repères visuels</h2>
+        <div class="synthesis-mark" style="margin-bottom:12px;">Élément retenu pour la synthèse</div>
         <div id="legend" class="legend"></div>
       </div>
     </aside>
@@ -945,8 +1083,15 @@
     const detailsTitle = document.getElementById("detailsTitle");
     const detailsMeta = document.getElementById("detailsMeta");
     const detailsBody = document.getElementById("detailsBody");
+    const synthesisMeta = document.getElementById("synthesisMeta");
+    const synthesisBody = document.getElementById("synthesisBody");
+    const clearSynthesisButton = document.getElementById("clearSynthesisButton");
     const legend = document.getElementById("legend");
     const downloadLink = document.getElementById("downloadLink");
+    const downloadFragmentsButton = document.getElementById("downloadFragmentsButton");
+    const downloadSynthesisPromptButton = document.getElementById("downloadSynthesisPromptButton");
+    const copySynthesisPromptButton = document.getElementById("copySynthesisPromptButton");
+    const exportHint = document.getElementById("exportHint");
     const timelineGuideVertical = document.getElementById("timelineGuideVertical");
     const timelineGuideHorizontal = document.getElementById("timelineGuideHorizontal");
     const timelineRailVertical = document.getElementById("timelineRailVertical");
@@ -965,6 +1110,9 @@
     let currentTimelineMeta = null;
     let currentAppliedMode = null;
     let currentTimelineLayoutMeta = null;
+    let currentDetailsContext = null;
+    let currentFragmentOwners = new Map();
+    let synthesisSelection = new Map();
 
     const VIEW_MODE_LABELS = {
       auto: "Recommandé",
@@ -1059,6 +1207,30 @@
 
     function formatText(value) {
       return escapeHtml(value || "").replaceAll("\n", "<br>");
+    }
+
+    function buildNodeOwnerKey(nodeId) {
+      return `node:${String(nodeId || "").trim()}`;
+    }
+
+    function buildEdgeOwnerKey(edgeId) {
+      return `edge:${String(edgeId || "").trim()}`;
+    }
+
+    function buildSelectionKey(ownerKey, fragmentId) {
+      return `${ownerKey}::${fragmentId}`;
+    }
+
+    function downloadTextFile(filename, content) {
+      const blob = new Blob([content], { type: "text/markdown;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
     }
 
     function clamp(value, min, max) {
@@ -1312,6 +1484,7 @@
     }
 
     function setEmptyDetails() {
+      currentDetailsContext = null;
       detailsTitle.textContent = "Aucun élément sélectionné";
       detailsMeta.textContent = "Cliquez sur un élément du graphe.";
       detailsBody.innerHTML = '<p class="empty">Le panneau de droite affiche les informations détaillées et les sources associées à l\'élément sélectionné.</p>';
@@ -1324,7 +1497,94 @@
       return `<ul class="list">${documentPaths.map((path) => `<li>${escapeHtml(path)}</li>`).join("")}</ul>`;
     }
 
-    function setNodeDetails(nodeData) {
+    function renderFragmentCards(fragments, ownerType, ownerKey, emptyLabel) {
+      if (!fragments || !fragments.length) {
+        return `<p class="empty">${escapeHtml(emptyLabel)}</p>`;
+      }
+      return `
+        <div class="fragment-list">
+          ${fragments.map((fragment, index) => {
+            const selectionKey = buildSelectionKey(ownerKey, fragment.id);
+            const isSelected = synthesisSelection.has(selectionKey);
+            return `
+              <article class="fragment-card ${isSelected ? "is-selected" : ""}">
+                <div class="fragment-head">
+                  <strong>Fragment ${index + 1}</strong>
+                  <label class="fragment-toggle">
+                    <input
+                      type="checkbox"
+                      data-fragment-toggle="true"
+                      data-owner-type="${escapeHtml(ownerType)}"
+                      data-owner-key="${escapeHtml(ownerKey)}"
+                      data-fragment-id="${escapeHtml(fragment.id)}"
+                      ${isSelected ? "checked" : ""}
+                    >
+                    <span>${isSelected ? "Retenu" : "Ajouter"}</span>
+                  </label>
+                </div>
+                <div class="fragment-body">
+                  <p>${formatText(fragment.text || "")}</p>
+                </div>
+                <div class="fragment-origin">
+                  <strong>Sources :</strong> ${fragment.document_paths?.length ? escapeHtml(fragment.document_paths.join(" · ")) : "Aucune source déterminée"}
+                  ${fragment.token_count ? `<br><strong>Taille estimée :</strong> ${fragment.token_count} tokens` : ""}
+                </div>
+              </article>
+            `;
+          }).join("")}
+        </div>
+      `;
+    }
+
+    function buildFragmentOwners(data) {
+      const owners = new Map();
+      (data.nodes || []).forEach((node) => {
+        const ownerKey = buildNodeOwnerKey(node.id);
+        owners.set(ownerKey, {
+          ownerKey,
+          ownerType: "node",
+          ownerLabel: node.label || node.id || "Entité",
+          elementId: node.id,
+          sourceGroup: normalizeSourceGroup(node.source_group),
+          documentPaths: node.document_paths || [],
+          fragments: new Map((node.fragments || []).map((fragment) => [String(fragment.id), fragment])),
+        });
+      });
+      (data.edges || []).forEach((edge) => {
+        const ownerKey = buildEdgeOwnerKey(edge.id);
+        owners.set(ownerKey, {
+          ownerKey,
+          ownerType: "edge",
+          ownerLabel: `${edge.source} → ${edge.target}`,
+          elementId: edge.id,
+          sourceGroup: normalizeSourceGroup(edge.source_group || ""),
+          documentPaths: edge.document_paths || [],
+          fragments: new Map((edge.fragments || []).map((fragment) => [String(fragment.id), fragment])),
+        });
+      });
+      return owners;
+    }
+
+    function refreshCurrentDetails() {
+      if (!currentDetailsContext) {
+        setEmptyDetails();
+        return;
+      }
+      if (currentDetailsContext.type === "node") {
+        renderNodeDetails(currentDetailsContext.data);
+        return;
+      }
+      if (currentDetailsContext.type === "edge") {
+        renderEdgeDetails(currentDetailsContext.data);
+      }
+    }
+
+    function renderNodeDetails(nodeData) {
+      currentDetailsContext = { type: "node", data: nodeData };
+      const ownerKey = buildNodeOwnerKey(nodeData.id);
+      const selectedCount = Array.from(synthesisSelection.keys()).filter(
+        (selectionKey) => selectionKey.startsWith(`${ownerKey}::`)
+      ).length;
       detailsTitle.textContent = nodeData.label || nodeData.id || "Entité";
       const metaParts = [
         nodeData.entity_type || "Entité",
@@ -1334,22 +1594,208 @@
       if (nodeData.timeline_year) {
         metaParts.push(`année estimée ${nodeData.timeline_year}`);
       }
+      if (selectedCount) {
+        metaParts.push(`${selectedCount} fragment(s) retenu(s)`);
+      }
       detailsMeta.textContent = metaParts.join(" · ");
       detailsBody.innerHTML = `
         <p>${formatText(nodeData.description || "Aucune description d'entité n'a été extraite.")}</p>
         <h2 style="margin-top:14px;">Sources associées</h2>
         ${renderDocuments(nodeData.document_paths, "Aucune source n'est rattachée à cette entité.")}
+        <h2 style="margin-top:14px;">Fragments exploitables</h2>
+        ${renderFragmentCards(
+          nodeData.fragments,
+          "node",
+          ownerKey,
+          "Aucun fragment textuel exploitable n'a été rattaché à cette entité."
+        )}
       `;
     }
 
-    function setEdgeDetails(edgeData) {
+    function renderEdgeDetails(edgeData) {
+      currentDetailsContext = { type: "edge", data: edgeData };
+      const ownerKey = buildEdgeOwnerKey(edgeData.id);
+      const selectedCount = Array.from(synthesisSelection.keys()).filter(
+        (selectionKey) => selectionKey.startsWith(`${ownerKey}::`)
+      ).length;
       detailsTitle.textContent = `${edgeData.source} → ${edgeData.target}`;
-      detailsMeta.textContent = `poids ${Number(edgeData.weight || 0).toFixed(1)}`;
+      const metaParts = [`poids ${Number(edgeData.weight || 0).toFixed(1)}`];
+      if (selectedCount) {
+        metaParts.push(`${selectedCount} fragment(s) retenu(s)`);
+      }
+      detailsMeta.textContent = metaParts.join(" · ");
       detailsBody.innerHTML = `
         <p>${formatText(edgeData.description || "Aucune description de lien n'a été extraite.")}</p>
         <h2 style="margin-top:14px;">Sources associées</h2>
         ${renderDocuments(edgeData.document_paths, "Aucune source n'est rattachée à ce lien.")}
+        <h2 style="margin-top:14px;">Fragments exploitables</h2>
+        ${renderFragmentCards(
+          edgeData.fragments,
+          "edge",
+          ownerKey,
+          "Aucun fragment textuel exploitable n'a été rattaché à ce lien."
+        )}
       `;
+    }
+
+    function applySynthesisMarks() {
+      if (!cy) {
+        return;
+      }
+      cy.elements().removeClass("synthesis-marked");
+      synthesisSelection.forEach((entry) => {
+        if (!entry.elementId) {
+          return;
+        }
+        const element = cy.getElementById(entry.elementId);
+        if (element && element.length) {
+          element.addClass("synthesis-marked");
+        }
+      });
+    }
+
+    function renderSynthesisSelection() {
+      const entries = Array.from(synthesisSelection.values());
+      if (!entries.length) {
+        synthesisMeta.textContent = "Aucun fragment retenu pour le moment.";
+        synthesisBody.innerHTML = '<p class="empty">Cochez un fragment dans le panneau de détail pour constituer votre dossier de synthèse.</p>';
+        clearSynthesisButton.disabled = true;
+        exportHint.textContent = "Sélectionnez des fragments dans le panneau de détail pour préparer un export de synthèse.";
+        downloadFragmentsButton.disabled = true;
+        downloadSynthesisPromptButton.disabled = true;
+        copySynthesisPromptButton.disabled = true;
+        applySynthesisMarks();
+        return;
+      }
+
+      const uniqueSources = new Set();
+      entries.forEach((entry) => {
+        (entry.fragment.document_paths || []).forEach((path) => uniqueSources.add(path));
+      });
+      synthesisMeta.textContent = `${entries.length} fragment(s) retenu(s) · ${uniqueSources.size} source(s) mobilisée(s).`;
+      synthesisBody.innerHTML = `
+        <div class="synthesis-list">
+          ${entries.map((entry, index) => `
+            <article class="synthesis-entry">
+              <div class="synthesis-entry-head">
+                <strong>${index + 1}. ${escapeHtml(entry.ownerLabel)}</strong>
+                <button
+                  class="secondary small-button"
+                  type="button"
+                  data-remove-selection="${escapeHtml(entry.selectionKey)}"
+                >Retirer</button>
+              </div>
+              <div class="synthesis-entry-body">
+                <p>${formatText(entry.fragment.text || "")}</p>
+              </div>
+              <div class="synthesis-entry-meta">
+                <strong>Sources :</strong> ${entry.fragment.document_paths?.length ? escapeHtml(entry.fragment.document_paths.join(" · ")) : "Aucune source déterminée"}
+              </div>
+            </article>
+          `).join("")}
+        </div>
+      `;
+      clearSynthesisButton.disabled = false;
+      exportHint.textContent = "Les exports incluent les fragments retenus, leurs sources et un prompt de synthèse prêt à rejouer.";
+      downloadFragmentsButton.disabled = false;
+      downloadSynthesisPromptButton.disabled = false;
+      copySynthesisPromptButton.disabled = false;
+      applySynthesisMarks();
+    }
+
+    function synchronizeSynthesisSelection() {
+      const nextSelection = new Map();
+      synthesisSelection.forEach((entry) => {
+        const owner = currentFragmentOwners.get(entry.ownerKey);
+        const fragment = owner?.fragments?.get(entry.fragment.id);
+        if (!owner || !fragment) {
+          return;
+        }
+        nextSelection.set(entry.selectionKey, {
+          ...entry,
+          ownerLabel: owner.ownerLabel,
+          elementId: owner.elementId,
+          fragment,
+        });
+      });
+      synthesisSelection = nextSelection;
+      renderSynthesisSelection();
+      refreshCurrentDetails();
+    }
+
+    function toggleFragmentSelection(ownerKey, fragmentId, selected) {
+      const owner = currentFragmentOwners.get(ownerKey);
+      const fragment = owner?.fragments?.get(fragmentId);
+      if (!owner || !fragment) {
+        return;
+      }
+      const selectionKey = buildSelectionKey(ownerKey, fragmentId);
+      if (selected) {
+        synthesisSelection.set(selectionKey, {
+          selectionKey,
+          ownerKey,
+          ownerLabel: owner.ownerLabel,
+          ownerType: owner.ownerType,
+          elementId: owner.elementId,
+          fragment,
+        });
+      } else {
+        synthesisSelection.delete(selectionKey);
+      }
+      renderSynthesisSelection();
+      refreshCurrentDetails();
+    }
+
+    function clearSynthesisSelection() {
+      synthesisSelection = new Map();
+      renderSynthesisSelection();
+      refreshCurrentDetails();
+    }
+
+    function buildSynthesisExports() {
+      const entries = Array.from(synthesisSelection.values());
+      const question = queryInput.value.trim();
+      const fragmentsMarkdown = [
+        "# Fragments sélectionnés",
+        "",
+        question ? `Question de travail : ${question}` : "Question de travail : non renseignée",
+        "",
+        ...entries.flatMap((entry, index) => [
+          `## Fragment ${index + 1} - ${entry.ownerLabel}`,
+          "",
+          `Sources : ${(entry.fragment.document_paths || []).join(" · ") || "Aucune source déterminée"}`,
+          "",
+          entry.fragment.text || "",
+          "",
+        ]),
+      ].join("\n");
+
+      const promptMarkdown = [
+        "# Prompt de synthèse prêt à rejouer",
+        "",
+        "## Consigne",
+        "À partir des fragments ci-dessous, rédige une synthèse structurée en français.",
+        "- utilise uniquement les informations présentes dans les fragments sélectionnés ;",
+        "- signale explicitement les points incertains ou contradictoires ;",
+        "- cite les sources entre parenthèses quand c'est pertinent ;",
+        "- termine par une courte liste de points clés.",
+        "",
+        question ? `## Question de départ\n${question}\n` : "",
+        "## Fragments",
+        "",
+        ...entries.flatMap((entry, index) => [
+          `### Fragment ${index + 1} - ${entry.ownerLabel}`,
+          `Sources : ${(entry.fragment.document_paths || []).join(" · ") || "Aucune source déterminée"}`,
+          "",
+          entry.fragment.text || "",
+          "",
+        ]),
+      ].filter(Boolean).join("\n");
+
+      return {
+        fragmentsMarkdown,
+        promptMarkdown,
+      };
     }
 
     function populateSources(options, selectedId) {
@@ -1966,6 +2412,7 @@
         return {
           data: {
             ...node,
+            owner_key: buildNodeOwnerKey(node.id),
             source_group: group,
             color: sourceColor(group),
             display_size: Math.max(26, Math.min(82, Number(node.size || 18) * 2.1)),
@@ -1977,8 +2424,9 @@
         .filter((edge) => data.nodes.some((node) => node.id === edge.source) && data.nodes.some((node) => node.id === edge.target))
         .map((edge, index) => ({
           data: {
-            id: `${edge.source}__${edge.target}__${index}`,
             ...edge,
+            id: edge.id || `${edge.source}__${edge.target}__${index}`,
+            owner_key: buildEdgeOwnerKey(edge.id || `${edge.source}__${edge.target}__${index}`),
           }
         }));
 
@@ -2048,6 +2496,25 @@
             }
           },
           {
+            selector: "node.synthesis-marked",
+            style: {
+              "border-color": "#c9191e",
+              "border-width": 5,
+              "underlay-color": "#ffe3e3",
+              "underlay-opacity": 0.85,
+              "underlay-padding": 4
+            }
+          },
+          {
+            selector: "edge.synthesis-marked",
+            style: {
+              "line-color": "#c9191e",
+              "target-arrow-color": "#c9191e",
+              "line-style": "dashed",
+              "width": "mapData(weight, 1, 18, 2.5, 7)"
+            }
+          },
+          {
             selector: ".faded",
             style: {
               "opacity": 0.18,
@@ -2061,14 +2528,14 @@
         const node = event.target;
         cy.elements().removeClass("faded");
         cy.elements().difference(node.closedNeighborhood()).addClass("faded");
-        setNodeDetails(node.data());
+        renderNodeDetails(node.data());
       });
 
       cy.on("tap", "edge", (event) => {
         const edge = event.target;
         cy.elements().removeClass("faded");
         cy.elements().difference(edge.connectedNodes().union(edge)).addClass("faded");
-        setEdgeDetails(edge.data());
+        renderEdgeDetails(edge.data());
       });
 
       cy.on("tap", (event) => {
@@ -2098,15 +2565,22 @@
         buildCytoscapeInstance();
       }
 
-      currentGraphData = data;
+      const normalizedEdges = (data.edges || []).map((edge, index) => ({
+        ...edge,
+        id: edge.id || `${edge.source}__${edge.target}__${index}`,
+      }));
       currentTimelineMeta = inferTimelineMeta(data.nodes);
       const enrichedData = {
         ...data,
         nodes: currentTimelineMeta.nodes,
+        edges: normalizedEdges,
       };
+      currentGraphData = enrichedData;
       const elements = buildElements(enrichedData);
       cy.elements().remove();
       cy.add([...elements.nodes, ...elements.edges]);
+      currentFragmentOwners = buildFragmentOwners(enrichedData);
+      synchronizeSynthesisSelection();
 
       const layoutSelection = selectLayoutConfig(enrichedData, elements);
       currentAppliedMode = layoutSelection.key;
@@ -2128,6 +2602,7 @@
       layout.run();
 
       cy.elements().removeClass("faded");
+      applySynthesisMarks();
       const modePrefix = layoutSelection.requestedMode === "auto"
         ? `Mode recommandé · ${layoutSelection.label}`
         : `Mode actif · ${layoutSelection.label}`;
@@ -2179,6 +2654,8 @@
           if (cy) {
             cy.elements().remove();
           }
+          currentFragmentOwners = new Map();
+          synchronizeSynthesisSelection();
           currentTimelineLayoutMeta = null;
           renderTimelineGuide();
           currentAppliedMode = null;
@@ -2215,6 +2692,7 @@
     async function initializeViewer() {
       seedFromUrl();
       setEmptyDetails();
+      renderSynthesisSelection();
       populateLegend([]);
 
       try {
@@ -2244,6 +2722,34 @@
     applyButton.addEventListener("click", fetchGraph);
     queryInput.addEventListener("input", syncQuestionField);
     queryInput.addEventListener("change", syncQuestionField);
+    detailsBody.addEventListener("change", (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLInputElement) || target.dataset.fragmentToggle !== "true") {
+        return;
+      }
+      toggleFragmentSelection(
+        String(target.dataset.ownerKey || ""),
+        String(target.dataset.fragmentId || ""),
+        target.checked,
+      );
+    });
+    synthesisBody.addEventListener("click", (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement)) {
+        return;
+      }
+      const button = target.closest("[data-remove-selection]");
+      if (!button) {
+        return;
+      }
+      const selectionKey = String(button.getAttribute("data-remove-selection") || "");
+      if (!selectionKey) {
+        return;
+      }
+      synthesisSelection.delete(selectionKey);
+      renderSynthesisSelection();
+      refreshCurrentDetails();
+    });
     fitButton.addEventListener("click", () => {
       if (cy) {
         cy.elements().removeClass("faded");
@@ -2251,6 +2757,7 @@
       }
     });
     openWebuiButton.addEventListener("click", relaunchInOpenWebUi);
+    clearSynthesisButton.addEventListener("click", clearSynthesisSelection);
 
     layoutModeSelect.addEventListener("change", () => {
       if (!currentGraphData || !cy) {
@@ -2314,6 +2821,37 @@
           true
         );
       }
+    });
+
+    downloadFragmentsButton.addEventListener("click", () => {
+      if (!synthesisSelection.size) {
+        return;
+      }
+      const { fragmentsMarkdown } = buildSynthesisExports();
+      downloadTextFile("fragments-selectionnes.md", fragmentsMarkdown);
+      setOverlayState("Export prêt", "Les fragments sélectionnés ont été téléchargés au format Markdown.");
+    });
+
+    downloadSynthesisPromptButton.addEventListener("click", () => {
+      if (!synthesisSelection.size) {
+        return;
+      }
+      const { promptMarkdown } = buildSynthesisExports();
+      downloadTextFile("prompt-synthese-graphrag.md", promptMarkdown);
+      setOverlayState("Export prêt", "Le prompt de synthèse a été téléchargé au format Markdown.");
+    });
+
+    copySynthesisPromptButton.addEventListener("click", async () => {
+      if (!synthesisSelection.size) {
+        return;
+      }
+      const { promptMarkdown } = buildSynthesisExports();
+      const copied = await copyTextToClipboard(promptMarkdown);
+      if (copied) {
+        setOverlayState("Prompt copié", "Le prompt de synthèse a été copié dans le presse-papiers.");
+        return;
+      }
+      setOverlayState("Copie impossible", "Le navigateur n'a pas permis la copie automatique du prompt.", true);
     });
 
     initializeViewer();
