@@ -15,6 +15,7 @@ data:
           - mojeek
           - wikipedia
           - bing
+          - google
 
     general:
       instance_name: "MirAI Search"
@@ -65,3 +66,5 @@ data:
         weight: 1.1
       - name: bing
         weight: 0.7
+      - name: google
+        weight: 0.6

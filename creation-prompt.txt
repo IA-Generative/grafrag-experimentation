@@ -155,9 +155,9 @@ Le repository généré doit éviter une interprétation naïve de "tous les gra
 - Mojeek
 - Wikipédia
 
-et éventuellement garder un moteur plus grand public comme Bing avec un poids moindre.
+et peut aussi exposer des moteurs plus grand public comme Bing et Google, mais avec des poids moindres que les moteurs plus alignés avec la confidentialité.
 
-Si Google n’est pas activé par défaut, le repository doit l’assumer et l’expliquer.
+Si Google est activé, le repository doit documenter explicitement qu’il reste moins favorisé dans le ranking et plus exposé aux contre-mesures anti-bot que les moteurs plus respectueux de la confidentialité.
 
 Pour l’expérience locale Docker, le repository peut utiliser un egress direct plus simple afin de rester facilement testable. Il doit documenter explicitement que :
 

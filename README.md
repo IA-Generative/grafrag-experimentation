@@ -246,7 +246,7 @@ This is intentional. A single Scaleway Kapsule cluster is regional, so a clean m
 - place three forward-proxy egress nodes outside the cluster, one in each target region
 - point SearXNG at those three proxies, letting SearXNG distribute requests across them
 
-The `k8s/base/configmap-searxng.yaml` profile favors privacy-oriented engines such as DuckDuckGo, Brave, Startpage, Qwant, and Mojeek. Bing stays available with a lower weight. Google is intentionally not enabled by default in this repository because it is both less privacy-friendly and more likely to trigger anti-bot countermeasures in self-hosted metasearch deployments.
+The `k8s/base/configmap-searxng.yaml` profile favors privacy-oriented engines such as DuckDuckGo, Brave, Startpage, Qwant, and Mojeek. Bing and Google are also enabled, but with lower weights so the ranking still favors the more privacy-oriented engines first. Google remains the least preferred of the enabled mainstream engines because it is more likely to trigger anti-bot countermeasures in self-hosted metasearch deployments.
 
 For the `10 egress IPs per exit node` requirement, this repository deliberately amends the initial idea: on Scaleway Instances, a single VM can attach up to five flexible routed IPv4 addresses and up to five public IPv6 addresses. If you strictly need ten IPv4 addresses per region, use two proxy VMs per region or another regional egress pool instead of a single node.
 

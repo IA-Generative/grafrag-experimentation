@@ -84,7 +84,7 @@ The default SearXNG profile intentionally favors engines aligned with privacy-or
 - Mojeek
 - Wikipedia
 
-Bing is kept with a lower weight. Google is not enabled by default in this repository because it is less privacy-friendly and more likely to trigger anti-bot countermeasures in self-hosted metasearch deployments.
+Bing and Google are kept with lower weights. This keeps the privacy-oriented engines first while still making Google available for broader general web coverage. Google remains the least preferred mainstream engine here because it is more likely to trigger anti-bot countermeasures in self-hosted metasearch deployments.
 
 ## Reference Material
 

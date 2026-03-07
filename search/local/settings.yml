@@ -8,6 +8,7 @@ use_default_settings:
       - mojeek
       - wikipedia
       - bing
+      - google
 
 general:
   instance_name: "MirAI Search Local"
@@ -52,3 +53,5 @@ engines:
     weight: 1.1
   - name: bing
     weight: 0.7
+  - name: google
+    weight: 0.6
