@@ -204,6 +204,7 @@ Important for local access from your Mac:
 - from the browser, use `http://localhost:8082`
 - Open WebUI is configured to fetch OIDC metadata through `host.docker.internal:8082` so browser redirects stay host-accessible in local development
 - local Keycloak test users are allowed to create their Open WebUI account through OIDC because `ENABLE_OAUTH_SIGNUP=true`
+- newly created OIDC users are activated directly as regular Open WebUI users because `DEFAULT_USER_ROLE=user`
 - when the same Keycloak e-mail logs in from another browser or session, `OAUTH_MERGE_ACCOUNTS_BY_EMAIL=true` must be enabled so Open WebUI links the OAuth identity to the existing account instead of trying to create a duplicate user
 
 To enable local SSO, start the optional profile:

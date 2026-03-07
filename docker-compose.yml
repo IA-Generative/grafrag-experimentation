@@ -68,7 +68,8 @@ services:
       WEBUI_SECRET_KEY: ${WEBUI_SECRET_KEY:-CHANGE_ME}
       ENABLE_SIGNUP: "false"
       ENABLE_LOGIN_FORM: "false"
-      ENABLE_OAUTH_SIGNUP: ${ENABLE_OAUTH_SIGNUP:-false}
+      ENABLE_OAUTH_SIGNUP: ${ENABLE_OAUTH_SIGNUP:-true}
+      DEFAULT_USER_ROLE: ${DEFAULT_USER_ROLE:-user}
       OAUTH_MERGE_ACCOUNTS_BY_EMAIL: ${OAUTH_MERGE_ACCOUNTS_BY_EMAIL:-true}
       OAUTH_PROVIDER_NAME: Keycloak
       OPENID_PROVIDER_URL: http://host.docker.internal:${KEYCLOAK_PORT:-8082}/realms/openwebui/.well-known/openid-configuration

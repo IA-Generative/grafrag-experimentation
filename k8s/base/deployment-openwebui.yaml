@@ -29,6 +29,8 @@ spec:
               value: "false"
             - name: ENABLE_OAUTH_SIGNUP
               value: "true"
+            - name: DEFAULT_USER_ROLE
+              value: "user"
             - name: OAUTH_MERGE_ACCOUNTS_BY_EMAIL
               value: "true"
             - name: OAUTH_PROVIDER_NAME
