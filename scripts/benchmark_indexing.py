@@ -85,6 +85,17 @@ OPTIMIZED_PROFILES = {
             "community reports than v1."
         ),
     ),
+    "v3": OptimizedProfileSpec(
+        name="v3",
+        settings_file="settings.optimized.v3.yaml",
+        chunk_size=2200,
+        chunk_overlap=64,
+        quality_note=(
+            "Standard indexing kept, with the v2 chunking/report constraints and a much higher concurrency target "
+            "to test endpoint saturation effects. Expect quality close to v2, but watch for throttling or unstable "
+            "tail latency."
+        ),
+    ),
 }
 
 

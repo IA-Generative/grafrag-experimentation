@@ -436,6 +436,7 @@ For reproducible local GraphRAG indexing benchmarks, this repository now ships t
 - [`graphrag/settings.baseline.yaml`](./graphrag/settings.baseline.yaml)
 - [`graphrag/settings.optimized.yaml`](./graphrag/settings.optimized.yaml)
 - [`graphrag/settings.optimized.v2.yaml`](./graphrag/settings.optimized.v2.yaml)
+- [`graphrag/settings.optimized.v3.yaml`](./graphrag/settings.optimized.v3.yaml)
 
 The benchmark runner uses the existing local `bridge` container by default, isolates each run in a dedicated GraphRAG workspace, and generates:
 
@@ -470,6 +471,12 @@ To run the more aggressive `standard` optimization profile captured after the fi
 
 ```bash
 python3 scripts/benchmark_indexing.py --optimized-profile v2
+```
+
+To test the higher-concurrency v3 profile:
+
+```bash
+python3 scripts/benchmark_indexing.py --optimized-profile v3
 ```
 
 To explore the more aggressive `fast` path explicitly:
