@@ -96,6 +96,17 @@ OPTIMIZED_PROFILES = {
             "tail latency."
         ),
     ),
+    "v4": OptimizedProfileSpec(
+        name="v4",
+        settings_file="settings.optimized.v4.yaml",
+        chunk_size=2200,
+        chunk_overlap=64,
+        quality_note=(
+            "Standard indexing kept, with a tail-aware rollback from v3 concurrency and slightly shorter description "
+            "summaries to reduce extract_graph wall time. Expect quality close to v2/v3, with somewhat terser entity "
+            "descriptions."
+        ),
+    ),
 }
 
 
