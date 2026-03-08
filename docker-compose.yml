@@ -15,6 +15,11 @@ services:
       KEYCLOAK_REALM: ${KEYCLOAK_REALM:-openwebui}
       GRAPH_VIEWER_CLIENT_ID: ${GRAPH_VIEWER_CLIENT_ID:-graphrag-viewer}
       GRAPH_VIEWER_AUTH_REQUIRED: ${GRAPH_VIEWER_AUTH_REQUIRED:-true}
+      CORPUS_MANAGER_PUBLIC_URL: ${CORPUS_MANAGER_PUBLIC_URL:-http://localhost:8084}
+      CORPUS_MANAGER_CLIENT_ID: ${CORPUS_MANAGER_CLIENT_ID:-corpus-manager}
+      CORPUS_MANAGER_AUTH_REQUIRED: ${CORPUS_MANAGER_AUTH_REQUIRED:-true}
+      CORPUS_MANAGER_ROOT: /app/corpus-data
+      GRAPHRAG_TEMPLATE_ROOT: /bootstrap/graphrag
       SCW_LLM_BASE_URL: ${SCW_LLM_BASE_URL:-}
       SCW_SECRET_KEY_LLM: ${SCW_SECRET_KEY_LLM:-}
       SCW_LLM_MODEL: ${SCW_LLM_MODEL:-}
@@ -33,6 +38,7 @@ services:
       GRAPHRAG_CACHE_S3_SESSION_TOKEN: ${GRAPHRAG_CACHE_S3_SESSION_TOKEN:-}
     volumes:
       - ./graphrag:/app/graphrag
+      - ./corpus-data:/app/corpus-data
       - graphrag-cache:/app/graphrag/cache
     ports:
       - "${BRIDGE_PORT:-8081}:8081"
@@ -58,6 +64,78 @@ services:
         condition: service_healthy
     ports:
       - "${PIPELINES_PORT:-9099}:9099"
+
+  corpus-manager:
+    build:
+      context: .
+      dockerfile: bridge/Dockerfile
+    env_file:
+      - .env
+    environment:
+      OPENWEBUI_PUBLIC_URL: ${OPENWEBUI_PUBLIC_URL:-http://localhost:3000}
+      KEYCLOAK_PUBLIC_URL: ${KEYCLOAK_PUBLIC_URL:-http://localhost:8082}
+      KEYCLOAK_INTERNAL_URL: ${KEYCLOAK_INTERNAL_URL:-http://keycloak:8080}
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM:-openwebui}
+      CORPUS_MANAGER_PUBLIC_URL: ${CORPUS_MANAGER_PUBLIC_URL:-http://localhost:8084}
+      CORPUS_MANAGER_CLIENT_ID: ${CORPUS_MANAGER_CLIENT_ID:-corpus-manager}
+      CORPUS_MANAGER_AUTH_REQUIRED: ${CORPUS_MANAGER_AUTH_REQUIRED:-true}
+      CORPUS_MANAGER_ROOT: /app/corpus-data
+      GRAPHRAG_TEMPLATE_ROOT: /bootstrap/graphrag
+      SCW_LLM_BASE_URL: ${SCW_LLM_BASE_URL:-}
+      SCW_SECRET_KEY_LLM: ${SCW_SECRET_KEY_LLM:-}
+      SCW_LLM_MODEL: ${SCW_LLM_MODEL:-}
+      OPENAI_EMBEDDING_MODEL: ${OPENAI_EMBEDDING_MODEL:-bge-multilingual-gemma2}
+    command: ["uvicorn", "corpus_app:app", "--host", "0.0.0.0", "--port", "8084"]
+    volumes:
+      - ./corpus-data:/app/corpus-data
+    ports:
+      - "${CORPUS_MANAGER_PORT:-8084}:8084"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8084/api/config"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+  corpus-worker:
+    build:
+      context: .
+      dockerfile: bridge/Dockerfile
+    env_file:
+      - .env
+    environment:
+      KEYCLOAK_PUBLIC_URL: ${KEYCLOAK_PUBLIC_URL:-http://localhost:8082}
+      KEYCLOAK_INTERNAL_URL: ${KEYCLOAK_INTERNAL_URL:-http://keycloak:8080}
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM:-openwebui}
+      CORPUS_MANAGER_PUBLIC_URL: ${CORPUS_MANAGER_PUBLIC_URL:-http://localhost:8084}
+      CORPUS_MANAGER_CLIENT_ID: ${CORPUS_MANAGER_CLIENT_ID:-corpus-manager}
+      CORPUS_MANAGER_AUTH_REQUIRED: ${CORPUS_MANAGER_AUTH_REQUIRED:-true}
+      CORPUS_MANAGER_ROOT: /app/corpus-data
+      GRAPHRAG_TEMPLATE_ROOT: /bootstrap/graphrag
+      SCW_LLM_BASE_URL: ${SCW_LLM_BASE_URL:-}
+      SCW_SECRET_KEY_LLM: ${SCW_SECRET_KEY_LLM:-}
+      SCW_LLM_MODEL: ${SCW_LLM_MODEL:-}
+      OPENAI_EMBEDDING_MODEL: ${OPENAI_EMBEDDING_MODEL:-bge-multilingual-gemma2}
+    command: ["python", "/app/corpus_worker.py"]
+    volumes:
+      - ./corpus-data:/app/corpus-data
+    depends_on:
+      corpus-manager:
+        condition: service_healthy
+
+  drive:
+    build:
+      context: .
+      dockerfile: bridge/Dockerfile
+    command: ["uvicorn", "drive_mock_app:app", "--host", "0.0.0.0", "--port", "8070"]
+    volumes:
+      - ./drive-data:/app/drive-data:ro
+    ports:
+      - "${DRIVE_LOCAL_PORT:-8085}:8070"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8070/"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
 
   openwebui:
     image: ${OPENWEBUI_IMAGE:-ghcr.io/open-webui/open-webui:main}

@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: corpus-manager
+  namespace: ${NAMESPACE}
+spec:
+  selector:
+    app: corpus-manager
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

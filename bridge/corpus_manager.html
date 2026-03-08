@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Corpus Manager</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f3f6f8;
+      --panel: #ffffff;
+      --ink: #132128;
+      --muted: #5d6c75;
+      --accent: #005a72;
+      --accent-soft: #d8eef4;
+      --danger: #b83a2f;
+      --danger-soft: #fae3e0;
+      --ok: #1f6a4a;
+      --ok-soft: #dff3e8;
+      --line: #d7e1e6;
+      --shadow: 0 16px 40px rgba(17, 33, 40, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Avenir Next", "Segoe UI", sans-serif;
+      background: linear-gradient(180deg, #eef7fa 0%, var(--bg) 18%, #f6f8fa 100%);
+      color: var(--ink);
+    }
+    header {
+      padding: 24px 28px 16px;
+    }
+    header h1 {
+      margin: 0 0 8px;
+      font-size: 2rem;
+    }
+    header p {
+      margin: 0;
+      color: var(--muted);
+      max-width: 70rem;
+    }
+    main {
+      display: grid;
+      grid-template-columns: 340px minmax(0, 1fr);
+      gap: 20px;
+      padding: 0 24px 24px;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      box-shadow: var(--shadow);
+    }
+    .panel section {
+      padding: 20px;
+      border-top: 1px solid var(--line);
+    }
+    .panel section:first-child {
+      border-top: none;
+    }
+    .stack { display: grid; gap: 12px; }
+    .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .grow { flex: 1 1 auto; }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border-radius: 999px;
+      padding: 6px 12px;
+      font-size: 0.88rem;
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+    .pill.ok { background: var(--ok-soft); color: var(--ok); }
+    .pill.error { background: var(--danger-soft); color: var(--danger); }
+    input, textarea, select, button {
+      font: inherit;
+    }
+    input, textarea, select {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px 12px;
+      background: #fff;
+      color: var(--ink);
+    }
+    textarea { min-height: 88px; resize: vertical; }
+    button {
+      border: none;
+      border-radius: 12px;
+      padding: 10px 14px;
+      cursor: pointer;
+      background: var(--accent);
+      color: #fff;
+      transition: transform 120ms ease, opacity 120ms ease;
+    }
+    button.secondary {
+      background: #edf3f6;
+      color: var(--ink);
+    }
+    button.danger {
+      background: var(--danger);
+    }
+    button:hover { transform: translateY(-1px); }
+    button:disabled { opacity: 0.45; cursor: default; transform: none; }
+    .list {
+      display: grid;
+      gap: 10px;
+    }
+    .corpus-card {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 14px;
+      cursor: pointer;
+      background: #fbfcfd;
+    }
+    .corpus-card.active {
+      border-color: var(--accent);
+      background: #eff8fb;
+    }
+    .muted { color: var(--muted); }
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 12px;
+    }
+    .metric {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 14px;
+      background: #fbfcfd;
+    }
+    .metric strong {
+      display: block;
+      font-size: 1.25rem;
+      margin-bottom: 6px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    th, td {
+      text-align: left;
+      padding: 10px 8px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+    }
+    th {
+      color: var(--muted);
+      font-size: 0.82rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    pre {
+      margin: 0;
+      padding: 14px;
+      border-radius: 14px;
+      background: #0d1c22;
+      color: #dfe9ec;
+      overflow: auto;
+      max-height: 260px;
+    }
+    .empty {
+      padding: 20px;
+      border: 1px dashed var(--line);
+      border-radius: 14px;
+      color: var(--muted);
+      text-align: center;
+    }
+    @media (max-width: 1000px) {
+      main { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Corpus Manager</h1>
+    <p>Console de pilotage des corpus, snapshots, indexations et publications. Cette interface est la reference detaillee; Open WebUI ne recoit que des notifications synthetiques.</p>
+  </header>
+
+  <main>
+    <aside class="panel">
+      <section class="stack">
+        <div class="row">
+          <div class="grow">
+            <strong id="user-name">Chargement...</strong>
+            <div class="muted" id="user-meta"></div>
+          </div>
+          <span class="pill" id="auth-state">Auth</span>
+        </div>
+      </section>
+      <section class="stack">
+        <div class="row">
+          <strong class="grow">Notifications recentes</strong>
+          <button class="secondary" id="refresh-button" type="button">Rafraichir</button>
+        </div>
+        <div id="notifications" class="stack"></div>
+      </section>
+      <section class="stack">
+        <strong>Nouveau corpus</strong>
+        <form id="create-form" class="stack">
+          <input name="name" placeholder="Nom du corpus" required>
+          <input name="slug" placeholder="Slug stable (ex: achats-2026)" required>
+          <textarea name="description" placeholder="Description courte"></textarea>
+          <select name="source_kind">
+            <option value="filesystem">filesystem</option>
+            <option value="drive">drive-http</option>
+          </select>
+          <input name="source_name" placeholder="Nom de la source" value="Primary source" required>
+          <input name="source_path" placeholder="Chemin local ou base_url selon la source" required>
+          <input name="workspace_id" placeholder="workspace_id (drive-http seulement)">
+          <input name="allowed_groups" placeholder="Groupes autorises, separes par des virgules">
+          <input name="allowed_users" placeholder="Utilisateurs autorises, separes par des virgules">
+          <button type="submit">Creer le corpus</button>
+        </form>
+      </section>
+      <section class="stack">
+        <strong>Corpus accessibles</strong>
+        <div id="corpus-list" class="list"></div>
+      </section>
+    </aside>
+
+    <section class="panel">
+      <section id="corpus-summary" class="stack">
+        <div class="empty">Selectionnez un corpus pour voir ses versions, ses jobs et ses actions.</div>
+      </section>
+      <section id="corpus-metrics"></section>
+      <section id="corpus-versions"></section>
+      <section id="corpus-jobs"></section>
+      <section id="job-log"></section>
+    </section>
+  </main>
+
+  <script>
+    const APP_CONFIG = __CORPUS_MANAGER_CONFIG__;
+    let accessToken = "";
+    let selectedCorpusId = "";
+    let selectedJobId = "";
+    let keycloak = null;
+
+    function csv(value) {
+      return value.split(",").map((item) => item.trim()).filter(Boolean);
+    }
+
+    async function ensureAuth() {
+      if (!APP_CONFIG.auth_required) {
+        document.getElementById("auth-state").textContent = "Local admin";
+        return;
+      }
+      await loadScript(APP_CONFIG.keycloak_js_url);
+      keycloak = new window.Keycloak({
+        url: APP_CONFIG.keycloak_url,
+        realm: APP_CONFIG.realm,
+        clientId: APP_CONFIG.client_id
+      });
+      await keycloak.init({ onLoad: "login-required", pkceMethod: "S256", checkLoginIframe: false });
+      accessToken = keycloak.token || "";
+      document.getElementById("auth-state").textContent = "OIDC actif";
+      setInterval(async () => {
+        try {
+          const refreshed = await keycloak.updateToken(45);
+          if (refreshed) {
+            accessToken = keycloak.token || "";
+          }
+        } catch (error) {
+          console.error(error);
+        }
+      }, 30000);
+    }
+
+    function loadScript(src) {
+      return new Promise((resolve, reject) => {
+        const script = document.createElement("script");
+        script.src = src;
+        script.onload = resolve;
+        script.onerror = reject;
+        document.head.appendChild(script);
+      });
+    }
+
+    async function api(path, options = {}) {
+      const headers = new Headers(options.headers || {});
+      if (accessToken) {
+        headers.set("Authorization", `Bearer ${accessToken}`);
+      }
+      if (options.body && !headers.has("Content-Type")) {
+        headers.set("Content-Type", "application/json");
+      }
+      const response = await fetch(path, { ...options, headers });
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(text || `${response.status}`);
+      }
+      const contentType = response.headers.get("content-type") || "";
+      if (contentType.includes("application/json")) {
+        return response.json();
+      }
+      return response.text();
+    }
+
+    function statusPill(state) {
+      const lowered = String(state || "").toLowerCase();
+      const cls = lowered.includes("fail") ? "pill error" : lowered.includes("ready") || lowered.includes("published") || lowered.includes("completed") ? "pill ok" : "pill";
+      return `<span class="${cls}">${state}</span>`;
+    }
+
+    function escapeHtml(value) {
+      return String(value || "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;");
+    }
+
+    async function loadDashboard(preferredCorpusId = "") {
+      const [me, corpora, notifications] = await Promise.all([
+        api("/api/me"),
+        api("/api/corpora"),
+        api("/api/notifications")
+      ]);
+
+      document.getElementById("user-name").textContent = me.preferred_username || me.email;
+      document.getElementById("user-meta").textContent = `${me.email} | roles: ${(me.roles || []).join(", ") || "none"} | groupes: ${(me.groups || []).join(", ") || "none"}`;
+
+      renderNotifications(notifications);
+      renderCorpusList(corpora);
+
+      const targetId = preferredCorpusId || selectedCorpusId || (corpora[0] && corpora[0].id) || "";
+      if (targetId) {
+        await loadCorpus(targetId);
+      } else {
+        document.getElementById("corpus-summary").innerHTML = '<div class="empty">Aucun corpus accessible pour le moment.</div>';
+        document.getElementById("corpus-metrics").innerHTML = "";
+        document.getElementById("corpus-versions").innerHTML = "";
+        document.getElementById("corpus-jobs").innerHTML = "";
+        document.getElementById("job-log").innerHTML = "";
+      }
+    }
+
+    function renderNotifications(items) {
+      const target = document.getElementById("notifications");
+      if (!items.length) {
+        target.innerHTML = '<div class="empty">Aucune notification recente.</div>';
+        return;
+      }
+      target.innerHTML = items.map((item) => `
+        <div class="metric">
+          <div class="row">
+            <strong class="grow">${escapeHtml(item.title)}</strong>
+            ${statusPill(item.level)}
+          </div>
+          <div class="muted">${escapeHtml(item.corpus_name)} | ${escapeHtml(item.created_at)}</div>
+          <div style="margin-top: 8px;">${escapeHtml(item.message)}</div>
+        </div>
+      `).join("");
+    }
+
+    function renderCorpusList(corpora) {
+      const target = document.getElementById("corpus-list");
+      if (!corpora.length) {
+        target.innerHTML = '<div class="empty">Aucun corpus visible avec vos droits.</div>';
+        return;
+      }
+      target.innerHTML = corpora.map((corpus) => `
+        <div class="corpus-card ${corpus.id === selectedCorpusId ? "active" : ""}" data-corpus-id="${corpus.id}">
+          <div class="row">
+            <strong class="grow">${escapeHtml(corpus.name)}</strong>
+            ${statusPill(corpus.workflow_state)}
+          </div>
+          <div class="muted">${escapeHtml(corpus.slug)}</div>
+          <div style="margin-top: 8px;">${escapeHtml(corpus.description || "")}</div>
+          <div class="muted" style="margin-top: 8px;">Docs publies: ${escapeHtml(corpus.document_count)}</div>
+        </div>
+      `).join("");
+      target.querySelectorAll("[data-corpus-id]").forEach((node) => {
+        node.addEventListener("click", () => loadCorpus(node.dataset.corpusId));
+      });
+    }
+
+    async function loadCorpus(corpusId) {
+      selectedCorpusId = corpusId;
+      const corpus = await api(`/api/corpora/${corpusId}`);
+      renderCorpusList(await api("/api/corpora"));
+      renderCorpusDetail(corpus);
+    }
+
+    function renderCorpusDetail(corpus) {
+      document.getElementById("corpus-summary").innerHTML = `
+        <div class="row">
+          <div class="grow">
+            <h2 style="margin: 0 0 8px;">${escapeHtml(corpus.name)}</h2>
+            <div class="muted">${escapeHtml(corpus.slug)} | version active: ${escapeHtml(corpus.active_version_label || "aucune")}</div>
+            <p style="margin: 10px 0 0;">${escapeHtml(corpus.description || "")}</p>
+          </div>
+          ${statusPill(corpus.workflow_state)}
+        </div>
+        <div class="row">
+          <button type="button" id="sync-action">Synchroniser</button>
+          <button type="button" class="secondary" id="index-action">Indexer la derniere version</button>
+        </div>
+      `;
+      document.getElementById("sync-action").addEventListener("click", () => runCorpusAction(`/api/corpora/${corpus.id}/sync`));
+      document.getElementById("index-action").addEventListener("click", () => runCorpusAction(`/api/corpora/${corpus.id}/index`));
+
+      document.getElementById("corpus-metrics").innerHTML = `
+        <div class="metrics">
+          <div class="metric"><strong>${escapeHtml(corpus.document_count)}</strong>documents publies</div>
+          <div class="metric"><strong>${escapeHtml((corpus.allowed_groups || []).length)}</strong>groupes autorises</div>
+          <div class="metric"><strong>${escapeHtml((corpus.allowed_users || []).length)}</strong>utilisateurs autorises</div>
+          <div class="metric"><strong>${escapeHtml(corpus.updated_at)}</strong>mise a jour</div>
+        </div>
+      `;
+
+      document.getElementById("corpus-versions").innerHTML = `
+        <div class="stack">
+          <div class="row"><strong class="grow">Versions</strong></div>
+          ${renderVersionsTable(corpus)}
+        </div>
+      `;
+
+      document.getElementById("corpus-jobs").innerHTML = `
+        <div class="stack">
+          <div class="row"><strong class="grow">Historique des jobs</strong></div>
+          ${renderJobsTable(corpus)}
+        </div>
+      `;
+
+      document.getElementById("job-log").innerHTML = '<strong>Logs</strong><div class="empty">Selectionnez un job pour afficher ses logs.</div>';
+
+      document.querySelectorAll("[data-publish-version]").forEach((button) => {
+        button.addEventListener("click", () => runCorpusAction(`/api/corpora/${corpus.id}/publish/${button.dataset.publishVersion}`));
+      });
+      document.querySelectorAll("[data-rollback-version]").forEach((button) => {
+        button.addEventListener("click", () => runCorpusAction(`/api/corpora/${corpus.id}/rollback/${button.dataset.rollbackVersion}`));
+      });
+      document.querySelectorAll("[data-retry-job]").forEach((button) => {
+        button.addEventListener("click", () => runCorpusAction(`/api/jobs/${button.dataset.retryJob}/retry`, "POST", selectedCorpusId));
+      });
+      document.querySelectorAll("[data-log-job]").forEach((button) => {
+        button.addEventListener("click", () => loadJobLog(button.dataset.logJob));
+      });
+    }
+
+    function renderVersionsTable(corpus) {
+      if (!corpus.versions || !corpus.versions.length) {
+        return '<div class="empty">Aucune version creee pour ce corpus.</div>';
+      }
+      return `
+        <table>
+          <thead>
+            <tr><th>Version</th><th>Etat</th><th>Docs</th><th>Taille</th><th>Actions</th></tr>
+          </thead>
+          <tbody>
+            ${corpus.versions.map((version) => `
+              <tr>
+                <td><strong>${escapeHtml(version.label)}</strong><div class="muted">${escapeHtml(version.created_at)}</div></td>
+                <td>${statusPill(version.status)} ${version.is_active ? '<span class="pill ok">active</span>' : ''}</td>
+                <td>${escapeHtml(version.document_count)}</td>
+                <td>${escapeHtml(version.snapshot_bytes)}</td>
+                <td class="row">
+                  <button class="secondary" type="button" data-publish-version="${version.id}" ${version.status !== "ready" ? "disabled" : ""}>Publier</button>
+                  <button class="secondary" type="button" data-rollback-version="${version.id}" ${version.is_active ? "disabled" : ""}>Rollback</button>
+                </td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      `;
+    }
+
+    function renderJobsTable(corpus) {
+      if (!corpus.jobs || !corpus.jobs.length) {
+        return '<div class="empty">Aucun job enregistre.</div>';
+      }
+      return `
+        <table>
+          <thead>
+            <tr><th>Job</th><th>Etat</th><th>Progression</th><th>Erreur</th><th>Actions</th></tr>
+          </thead>
+          <tbody>
+            ${corpus.jobs.map((job) => `
+              <tr>
+                <td><strong>${escapeHtml(job.job_type)}</strong><div class="muted">${escapeHtml(job.created_at)}</div></td>
+                <td>${statusPill(job.phase)}<div class="muted">${escapeHtml(job.status)}</div></td>
+                <td>${escapeHtml(job.progress_percent.toFixed(0))}%</td>
+                <td>${escapeHtml(job.error_summary || "")}</td>
+                <td class="row">
+                  <button class="secondary" type="button" data-log-job="${job.id}">Logs</button>
+                  <button class="danger" type="button" data-retry-job="${job.id}" ${job.status !== "failed" ? "disabled" : ""}>Retry</button>
+                </td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      `;
+    }
+
+    async function loadJobLog(jobId) {
+      selectedJobId = jobId;
+      const log = await api(`/api/jobs/${jobId}/logs`);
+      document.getElementById("job-log").innerHTML = `
+        <div class="stack">
+          <div class="row">
+            <strong class="grow">Logs du job ${escapeHtml(jobId)}</strong>
+          </div>
+          <pre>${escapeHtml(log || "Aucune ligne de log pour ce job.")}</pre>
+        </div>
+      `;
+    }
+
+    async function runCorpusAction(path, method = "POST", reloadCorpusId = selectedCorpusId) {
+      try {
+        await api(path, { method });
+        await loadDashboard(reloadCorpusId);
+      } catch (error) {
+        alert(error.message || error);
+      }
+    }
+
+    document.getElementById("create-form").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const form = new FormData(event.currentTarget);
+      const sourceKind = form.get("source_kind");
+      const pathOrUrl = String(form.get("source_path") || "").trim();
+      const payload = {
+        name: form.get("name"),
+        slug: form.get("slug"),
+        description: form.get("description"),
+        source_kind: sourceKind,
+        source_name: form.get("source_name"),
+        source_config: sourceKind === "filesystem"
+          ? { path: pathOrUrl }
+          : { base_url: pathOrUrl, workspace_id: String(form.get("workspace_id") || "default").trim() || "default" },
+        allowed_groups: csv(String(form.get("allowed_groups") || "")),
+        allowed_users: csv(String(form.get("allowed_users") || ""))
+      };
+      try {
+        const created = await api("/api/corpora", { method: "POST", body: JSON.stringify(payload) });
+        event.currentTarget.reset();
+        await loadDashboard(created.id);
+      } catch (error) {
+        alert(error.message || error);
+      }
+    });
+
+    document.getElementById("refresh-button").addEventListener("click", () => loadDashboard(selectedCorpusId));
+
+    (async () => {
+      try {
+        await ensureAuth();
+        await loadDashboard();
+      } catch (error) {
+        document.getElementById("corpus-summary").innerHTML = `<div class="empty">${escapeHtml(error.message || error)}</div>`;
+      }
+    })();
+  </script>
+</body>
+</html>

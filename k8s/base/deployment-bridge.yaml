@@ -87,9 +87,14 @@ spec:
               mountPath: /data/graphrag
             - name: graphrag-cache
               mountPath: /data/graphrag/cache
+            - name: corpus-manager-data
+              mountPath: /data/corpus-manager
       volumes:
         - name: graphrag-data
           persistentVolumeClaim:
             claimName: graphrag-data
         - name: graphrag-cache
           emptyDir: {}
+        - name: corpus-manager-data
+          persistentVolumeClaim:
+            claimName: corpus-manager-data

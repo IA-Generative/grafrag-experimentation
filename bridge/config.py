@@ -35,6 +35,15 @@ class Settings(BaseSettings):
     graph_viewer_auth_required: bool = Field(
         default=True, validation_alias="GRAPH_VIEWER_AUTH_REQUIRED"
     )
+    corpus_manager_public_url: str = Field(
+        default="http://localhost:8084", validation_alias="CORPUS_MANAGER_PUBLIC_URL"
+    )
+    corpus_manager_client_id: str = Field(
+        default="corpus-manager", validation_alias="CORPUS_MANAGER_CLIENT_ID"
+    )
+    corpus_manager_auth_required: bool = Field(
+        default=True, validation_alias="CORPUS_MANAGER_AUTH_REQUIRED"
+    )
     openai_api_base: str = Field(
         default="https://api.scaleway.ai/a9158aac-8404-46ea-8bf5-1ca048cd6ab4/v1",
         validation_alias="OPENAI_API_BASE",
@@ -57,6 +66,9 @@ class Settings(BaseSettings):
     graphrag_root: Path = Field(
         default=Path("/app/graphrag"), validation_alias="GRAPHRAG_ROOT"
     )
+    graphrag_template_root: Path = Field(
+        default=Path("/bootstrap/graphrag"), validation_alias="GRAPHRAG_TEMPLATE_ROOT"
+    )
     graphrag_input_dir: Path = Field(
         default=Path("/app/graphrag/input"), validation_alias="GRAPHRAG_INPUT_DIR"
     )
@@ -65,6 +77,9 @@ class Settings(BaseSettings):
     )
     graphrag_cache_dir_override: Path | None = Field(
         default=None, validation_alias="GRAPHRAG_CACHE_DIR"
+    )
+    corpus_manager_root: Path = Field(
+        default=Path("/app/corpus-data"), validation_alias="CORPUS_MANAGER_ROOT"
     )
     graphrag_method: str = Field(default="local", validation_alias="GRAPHRAG_METHOD")
     graphrag_response_type: str = Field(
@@ -146,6 +161,18 @@ class Settings(BaseSettings):
             self.graphrag_cache_s3_enabled
             and self.graphrag_cache_s3_bucket.strip() not in PLACEHOLDER_VALUES
         )
+
+    @property
+    def corpus_db_path(self) -> Path:
+        return self.corpus_manager_root / "metadata.db"
+
+    @property
+    def corpus_versions_root(self) -> Path:
+        return self.corpus_manager_root / "corpora"
+
+    @property
+    def corpus_logs_root(self) -> Path:
+        return self.corpus_manager_root / "logs"
 
     @property
     def chat_completions_url(self) -> str:

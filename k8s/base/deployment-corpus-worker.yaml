@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: corpus-worker
+  namespace: ${NAMESPACE}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: corpus-worker
+  template:
+    metadata:
+      labels:
+        app: corpus-worker
+    spec:
+      imagePullSecrets:
+        - name: grafrag-registry
+      containers:
+        - name: corpus-worker
+          image: ${REGISTRY}/grafrag-bridge:${IMAGE_TAG}
+          imagePullPolicy: IfNotPresent
+          command:
+            - python
+            - /app/corpus_worker.py
+          envFrom:
+            - configMapRef:
+                name: grafrag-config
+            - secretRef:
+                name: grafrag-secrets
+          volumeMounts:
+            - name: corpus-manager-data
+              mountPath: /data/corpus-manager
+      volumes:
+        - name: corpus-manager-data
+          persistentVolumeClaim:
+            claimName: corpus-manager-data

@@ -1,0 +1,6 @@
+Roadmap 2026
+
+Q1: launch the corpus manager pilot.
+Q2: connect the first external workspace and publish the first controlled corpus version.
+Q3: add operating dashboards and retry visibility for failed indexing jobs.
+Q4: review security boundaries and archive stale corpus versions.

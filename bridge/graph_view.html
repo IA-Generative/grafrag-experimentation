@@ -2444,6 +2444,8 @@
 
     function updateUrl() {
       const params = new URLSearchParams();
+      const existingParams = new URLSearchParams(location.search);
+      if (existingParams.get("corpus_id")) params.set("corpus_id", existingParams.get("corpus_id"));
       if (queryInput.value.trim()) params.set("query", queryInput.value.trim());
       if (sourceSelect.value) params.set("source_prefix", sourceSelect.value);
       params.set("max_nodes", String(maxNodesInput.value || 80));
@@ -2689,6 +2691,10 @@
           max_nodes: String(maxNodesInput.value || 80),
           min_weight: String(minWeightInput.value || 1),
         });
+        const urlParams = new URLSearchParams(location.search);
+        if (urlParams.get("corpus_id")) {
+          params.set("corpus_id", urlParams.get("corpus_id"));
+        }
 
         const response = await fetch(`/graph/data?${params.toString()}`, {
           headers: authHeaders(),

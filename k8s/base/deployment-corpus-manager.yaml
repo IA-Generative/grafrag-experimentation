@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: corpus-manager
+  namespace: ${NAMESPACE}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: corpus-manager
+  template:
+    metadata:
+      labels:
+        app: corpus-manager
+    spec:
+      imagePullSecrets:
+        - name: grafrag-registry
+      containers:
+        - name: corpus-manager
+          image: ${REGISTRY}/grafrag-bridge:${IMAGE_TAG}
+          imagePullPolicy: IfNotPresent
+          command:
+            - uvicorn
+            - corpus_app:app
+            - --host
+            - 0.0.0.0
+            - --port
+            - "8084"
+          envFrom:
+            - configMapRef:
+                name: grafrag-config
+            - secretRef:
+                name: grafrag-secrets
+          ports:
+            - containerPort: 8084
+              name: http
+          readinessProbe:
+            httpGet:
+              path: /api/config
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/config
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 20
+          volumeMounts:
+            - name: corpus-manager-data
+              mountPath: /data/corpus-manager
+      volumes:
+        - name: corpus-manager-data
+          persistentVolumeClaim:
+            claimName: corpus-manager-data

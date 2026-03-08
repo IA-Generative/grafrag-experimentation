@@ -3,11 +3,19 @@ kind: Kustomization
 resources:
   - namespace.yaml
   - pvc-graphrag.yaml
+  - pvc-corpus-manager.yaml
   - configmap.yaml
   - configmap-searxng.yaml
+  - configmap-drive-demo.yaml
   - deployment-bridge.yaml
   - service-bridge.yaml
   - ingress-bridge.yaml
+  - deployment-corpus-manager.yaml
+  - service-corpus-manager.yaml
+  - ingress-corpus-manager.yaml
+  - deployment-corpus-worker.yaml
+  - deployment-drive.yaml
+  - service-drive.yaml
   - deployment-pipelines.yaml
   - service-pipelines.yaml
   - deployment-openwebui.yaml

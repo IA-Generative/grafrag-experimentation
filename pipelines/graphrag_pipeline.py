@@ -39,7 +39,6 @@ class Pipeline:
         user: dict[str, Any] | None = None,
         **_: Any,
     ) -> str:
-        del user
         question = (user_message or self._extract_question(body or {}, messages)).strip()
         if not question:
             return "Le pipeline n'a reçu aucune question utilisateur."
@@ -47,9 +46,21 @@ class Pipeline:
         if self._looks_like_follow_up_prompt(question):
             return self._follow_up_response(question)
 
+        corpus_id, normalized_question = self._extract_corpus_selector(question)
+        user_context = self._extract_user_context(user or {})
+
         model_name = str(model_id or (body or {}).get("model", "graphrag-local")).lower()
         method = "global" if "global" in model_name else self.valves.default_method
-        payload = json.dumps({"question": question, "method": method}).encode("utf-8")
+        payload = json.dumps(
+            {
+                "question": normalized_question,
+                "method": method,
+                "corpus_id": corpus_id,
+                "user_email": user_context["email"],
+                "user_groups": user_context["groups"],
+                "user_roles": user_context["roles"],
+            }
+        ).encode("utf-8")
         http_request = urllib_request.Request(
             f"{self.valves.bridge_url}/query",
             data=payload,
@@ -67,6 +78,26 @@ class Pipeline:
         answer = data.get("answer", "Aucune réponse n'a été renvoyée par le bridge.")
         citations = data.get("citations", [])
         graph_url = data.get("graph_url")
+        notices = data.get("notices", [])
+        warnings = data.get("warnings", [])
+        prefix_sections = []
+        if notices:
+            notice_lines = []
+            for item in notices:
+                if not isinstance(item, dict):
+                    continue
+                title = item.get("title", "Notification")
+                message = item.get("message", "")
+                link_url = item.get("link_url")
+                line = f"- {title}: {message}".strip()
+                if link_url:
+                    line = f"{line} ({link_url})"
+                notice_lines.append(line)
+            if notice_lines:
+                prefix_sections.append("Etat des corpus:\n" + "\n".join(notice_lines))
+        if warnings:
+            prefix_sections.append("Notes:\n" + "\n".join(f"- {item}" for item in warnings))
+        prefix = ("\n\n".join(prefix_sections) + "\n\n") if prefix_sections else ""
         if citations:
             sources = "\n".join(
                 f"- {item.get('path', 'source inconnue')}" for item in citations
@@ -76,10 +107,10 @@ class Pipeline:
                 if graph_url
                 else ""
             )
-            return f"{answer}\n\nSources:\n{sources}{graph_section}"
+            return f"{prefix}{answer}\n\nSources:\n{sources}{graph_section}"
         if graph_url:
-            return f"{answer}\n\nGraphe :\n[Ouvrir le graphe interactif]({graph_url})"
-        return answer
+            return f"{prefix}{answer}\n\nGraphe :\n[Ouvrir le graphe interactif]({graph_url})"
+        return f"{prefix}{answer}"
 
     def _looks_like_follow_up_prompt(self, question: str) -> bool:
         lowered = question.lower()
@@ -141,3 +172,26 @@ class Pipeline:
                 if merged:
                     return merged
         return ""
+
+    def _extract_corpus_selector(self, question: str) -> tuple[str | None, str]:
+        match = re.match(r"^\s*\[\[\s*corpus:([A-Za-z0-9._-]+)\s*\]\]\s*(.*)$", question)
+        if not match:
+            return None, question
+        corpus_id = match.group(1).strip()
+        normalized = match.group(2).strip() or question
+        return corpus_id, normalized
+
+    def _extract_user_context(self, user: dict[str, Any]) -> dict[str, Any]:
+        email = str(user.get("email") or user.get("mail") or "").strip()
+        groups = user.get("groups")
+        roles = user.get("roles")
+        if not isinstance(groups, list):
+            groups = []
+        if not isinstance(roles, list):
+            role_value = user.get("role")
+            roles = [str(role_value)] if role_value else []
+        return {
+            "email": email or None,
+            "groups": [str(item) for item in groups],
+            "roles": [str(item) for item in roles],
+        }

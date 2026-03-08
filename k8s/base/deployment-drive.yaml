@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: drive
+  namespace: ${NAMESPACE}
+spec:
+  replicas: ${DRIVE_REPLICAS}
+  selector:
+    matchLabels:
+      app: drive
+  template:
+    metadata:
+      labels:
+        app: drive
+    spec:
+      imagePullSecrets:
+        - name: grafrag-registry
+      containers:
+        - name: drive
+          image: ${REGISTRY}/grafrag-bridge:${IMAGE_TAG}
+          imagePullPolicy: IfNotPresent
+          command:
+            - uvicorn
+            - drive_mock_app:app
+            - --host
+            - 0.0.0.0
+            - --port
+            - "8070"
+          ports:
+            - containerPort: 8070
+              name: http
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 20
+          volumeMounts:
+            - name: drive-demo-data
+              mountPath: /app/drive-data/default/README.md
+              subPath: README.md
+            - name: drive-demo-data
+              mountPath: /app/drive-data/default/finance/policy-update.md
+              subPath: finance-policy-update.md
+            - name: drive-demo-data
+              mountPath: /app/drive-data/default/projects/roadmap.txt
+              subPath: projects-roadmap.txt
+      volumes:
+        - name: drive-demo-data
+          configMap:
+            name: drive-demo-data

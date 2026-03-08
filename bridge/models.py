@@ -43,6 +43,7 @@ class GraphEdge(BaseModel):
 class GraphDataResponse(BaseModel):
     graph_ready: bool
     graph_kind: str = "entity"
+    corpus_id: str = ""
     query: str = ""
     source_prefix: str = ""
     max_nodes: int
@@ -58,6 +59,22 @@ class GraphDataResponse(BaseModel):
 
 class QueryRequest(BaseModel):
     question: str = Field(min_length=1, description="User question sent by Open WebUI.")
+    corpus_id: str | None = Field(
+        default=None,
+        description="Explicit corpus identifier selected by the user.",
+    )
+    user_email: str | None = Field(
+        default=None,
+        description="User e-mail propagated by Open WebUI or another trusted client.",
+    )
+    user_groups: list[str] = Field(
+        default_factory=list,
+        description="User groups propagated by a trusted caller.",
+    )
+    user_roles: list[str] = Field(
+        default_factory=list,
+        description="User roles propagated by a trusted caller.",
+    )
     method: str | None = Field(
         default=None, description="GraphRAG query method, usually local or global."
     )
@@ -75,6 +92,7 @@ class QueryResponse(BaseModel):
     method: str
     engine_used: str
     warnings: list[str] = Field(default_factory=list)
+    notices: list[dict[str, str]] = Field(default_factory=list)
     raw_output: str | None = None
     graph_url: str | None = None
 

@@ -23,6 +23,7 @@ reports/
 rendered/
 k8s/rendered/
 openwebui/data/
+corpus-data/
 graphrag/cache/
 graphrag/output/*
 !graphrag/output/.gitkeep

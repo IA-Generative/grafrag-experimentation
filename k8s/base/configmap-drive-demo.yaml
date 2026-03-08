@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: drive-demo-data
+  namespace: ${NAMESPACE}
+data:
+  README.md: |
+    # Demo Drive Workspace
+
+    This directory is served by the local `drive` mock service.
+
+    Use it to test:
+
+    - corpus source registration through `drive-http`
+    - snapshot creation by the corpus worker
+    - GraphRAG indexing and publication per corpus version
+  finance-policy-update.md: |
+    # Policy Update
+
+    The procurement policy changed in January 2026.
+
+    - Approval now requires two reviewers above 25,000 EUR.
+    - Emergency purchases must be documented within 48 hours.
+    - Quarterly audits compare invoices, contracts, and delivery evidence.
+  projects-roadmap.txt: |
+    Roadmap 2026
+
+    Q1: launch the corpus manager pilot.
+    Q2: connect the first external workspace and publish the first controlled corpus version.
+    Q3: add operating dashboards and retry visibility for failed indexing jobs.
+    Q4: review security boundaries and archive stale corpus versions.

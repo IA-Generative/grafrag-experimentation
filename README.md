@@ -2,6 +2,13 @@
 
 Reference repository for experimenting with Microsoft GraphRAG behind Open WebUI, with a FastAPI bridge, external OpenAI-compatible LLMs, and deployment paths for Docker Compose and Kubernetes.
 
+The repository now also includes a pragmatic multi-corpus control plane:
+
+- a dedicated `Corpus Manager` web UI and API
+- an asynchronous `corpus-worker` for sync and indexing jobs
+- per-corpus, per-version GraphRAG workspaces
+- a local `drive` mock service that behaves like a simple external collaborative file source for demo and testing
+
 ## Architecture
 
 The repository separates user interaction, retrieval orchestration, and infrastructure concerns:
@@ -9,6 +16,8 @@ The repository separates user interaction, retrieval orchestration, and infrastr
 - Open WebUI provides the chat interface.
 - An Open WebUI pipeline routes user prompts to the GraphRAG bridge.
 - The FastAPI bridge normalizes requests, triggers GraphRAG CLI workflows when available, and adds a safe fallback path when no index exists yet.
+- The Corpus Manager stores corpus metadata, sources, ACLs, versions, and job history in a dedicated metadata database.
+- A background worker synchronizes source snapshots and builds GraphRAG artifacts outside the HTTP request path.
 - GraphRAG works on a local corpus under [`graphrag/input`](./graphrag/input) and writes artifacts to [`graphrag/output`](./graphrag/output).
 - The final answer can be synthesized by any OpenAI-compatible endpoint through `SCW_LLM_BASE_URL`, `SCW_SECRET_KEY_LLM`, and `SCW_LLM_MODEL`.
 
@@ -32,6 +41,7 @@ flowchart TD
 6. The answer is returned to Open WebUI with citations to the local source files.
 7. The bridge can also expose an interactive graph slice at `/graph`, and Open WebUI answers include a clickable link to that page.
 8. When full GraphRAG artifacts are missing, the viewer falls back to a document map built directly from the files under `graphrag/input` instead of failing closed.
+9. For multi-corpus mode, the user selects an explicit published corpus and the bridge switches to the corresponding versioned GraphRAG workspace instead of querying a shared global index.
 
 The bridge must keep interactive chat responsive. In practice, this repository now applies a bounded request budget:
 
@@ -88,11 +98,36 @@ grafrag-experimentation/
 
 - Open WebUI: `http://localhost:3000`
 - Bridge API: `http://localhost:8081`
+- Corpus Manager: `http://localhost:8084`
 - Graph viewer: `http://localhost:8081/graph`
 - Pipeline service: `http://localhost:9099`
 - Keycloak in optional local SSO mode: `http://localhost:8082`
+- Drive mock: `http://localhost:8085`
 
 The graph viewer works at this stage in `document-map fallback` mode, built directly from `graphrag/input`, so local Docker no longer requires a prior GraphRAG indexing run just to make `mygraph` usable.
+
+The multi-corpus MVP stores its runtime state under [`corpus-data`](./corpus-data), which is intentionally ignored by Git. That directory contains the metadata SQLite database, per-corpus version workspaces, and worker log files.
+
+Local Docker now also starts these extra services by default:
+
+- `corpus-manager` on port `8084`
+- `corpus-worker` as the asynchronous job runner
+- `drive` on port `8085`, exposing a demo workspace named `default`
+
+To create a corpus from the local drive mock:
+
+1. Open `http://localhost:8084`
+2. Create a corpus with `source_kind=drive`
+3. Use `base_url=http://drive:8070` and `workspace_id=default`
+4. Run `Synchroniser`, then `Indexer la derniere version`, then `Publier`
+
+Open WebUI keeps the same two GraphRAG models. In multi-corpus mode, pick the corpus explicitly in the prompt with:
+
+```text
+[[corpus:your-corpus-id]] your question here
+```
+
+The bridge then enforces corpus-level access control before querying the published version. The current Open WebUI integration surfaces indexing notices as synthetic messages added to GraphRAG responses, with deep links back to the Corpus Manager. It does not yet create native Open WebUI channels automatically.
 
 5. Optionally index the sample corpus when you want the full GraphRAG entity/relationship graph plus `graphrag query`:
 
@@ -223,7 +258,7 @@ The Kubernetes deployment expects:
 - cert-manager
 - Docker image push access to `REGISTRY`
 - a namespace defined by `NAMESPACE`
-- DNS records for `OPENWEBUI_HOST`, `KEYCLOAK_HOST`, and `SEARXNG_HOST`
+- DNS records for `OPENWEBUI_HOST`, `KEYCLOAK_HOST`, `SEARXNG_HOST`, and `CORPUS_MANAGER_HOST`
 
 Deploy the full stack:
 
@@ -243,6 +278,10 @@ Keep `GRAPHRAG_INDEX_TIMEOUT_SECONDS=3600` when you do enable that job on Scalew
 
 The Kubernetes stack now also includes:
 
+- `corpus-manager` on its own ingress host
+- `corpus-worker` as a dedicated background deployment
+- a dedicated PVC for corpus metadata, version workspaces, and worker logs
+- a simple `drive` mock deployment plus in-cluster service for end-to-end sync tests
 - `searxng` as a separate search deployment with configurable replicas
 - `search-valkey` as the Valkey limiter/cache backend recommended by upstream SearXNG
 - a dedicated ingress on `SEARXNG_HOST`
@@ -310,6 +349,7 @@ Set these variables when you want the Kubernetes cache sync enabled:
 
 - Build the bridge image for `linux/amd64` on the current Scaleway Kubernetes nodes. The repository defaults `DOCKER_BUILD_PLATFORM` accordingly.
 - Keep the graph viewer deployable without indexing. Full GraphRAG artifacts remain optional for richer graph exploration, not a prerequisite for bringing the stack up.
+- Keep the corpus metadata and version workspaces on their dedicated PVC. The asynchronous worker and the bridge both depend on the same published corpus directories.
 - Keycloak behind the ingress must advertise the public hostname and trust forwarded headers (`--hostname=${KEYCLOAK_HOST}` plus `--proxy-headers=xforwarded`), otherwise OIDC redirects and issuer metadata break externally.
 - The current SearXNG profile intentionally excludes DuckDuckGo because it triggered repeated CAPTCHA failures in this deployment. The in-cluster backend also runs with `server.limiter: false` to avoid `429` on Open WebUI backend calls that do not look like browser traffic.
 - MirAI model logos inside Open WebUI are not automatic on the current Scaleway rollout. They live in Open WebUI model overrides stored in `webui.db`, and the current Kubernetes deployment keeps `/app/backend/data` on `emptyDir`. Without a PVC or a post-deploy reprovision step, those avatars disappear after a rollout.

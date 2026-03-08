@@ -115,6 +115,7 @@ class GraphRAGService:
             "openai_embedding_vector_size": self.settings.openai_embedding_vector_size,
             "openai_api_key_configured": self.settings.llm_ready,
             "bridge_public_url": self.settings.bridge_public_url,
+            "corpus_manager_public_url": self.settings.corpus_manager_public_url,
             "graph_viewer_auth_required": self.settings.graph_viewer_auth_required,
             "keycloak_public_url": self.settings.keycloak_public_url,
             "graph_viewer_client_id": self.settings.graph_viewer_client_id,
@@ -130,13 +131,21 @@ class GraphRAGService:
             "graphrag_query_ready": self._graphrag_query_artifacts_present(),
         }
 
-    def query(self, request: QueryRequest) -> QueryResponse:
+    def query(
+        self,
+        request: QueryRequest,
+        notices: list[dict[str, str]] | None = None,
+    ) -> QueryResponse:
         self._ensure_layout()
         method = request.method or self.settings.graphrag_method
         response_type = request.response_type or self.settings.graphrag_response_type
         top_k = request.top_k or self.settings.graphrag_top_k
         warnings: list[str] = []
-        graph_url = self._build_graph_url(request.question)
+        response_notices = notices or []
+        graph_url = self._build_graph_url(
+            request.question,
+            corpus_id=request.corpus_id or "",
+        )
         deadline = time.monotonic() + max(5, self.settings.request_timeout_seconds)
 
         if self._graphrag_cli_available() and self._graphrag_query_artifacts_present():
@@ -159,6 +168,7 @@ class GraphRAGService:
                 graph_url = self._build_graph_url(
                     request.question,
                     self._dominant_source_filter([document.path for document in ranked_documents]),
+                    request.corpus_id or "",
                 )
                 return QueryResponse(
                     answer=cli_output,
@@ -166,6 +176,7 @@ class GraphRAGService:
                     method=method,
                     engine_used="graphrag-cli",
                     warnings=warnings,
+                    notices=response_notices,
                     raw_output=cli_output,
                     graph_url=graph_url,
                 )
@@ -190,6 +201,7 @@ class GraphRAGService:
         graph_url = self._build_graph_url(
             request.question,
             self._dominant_source_filter([document.path for document in ranked_documents]),
+            request.corpus_id or "",
         )
         if not ranked_documents:
             answer = (
@@ -203,6 +215,7 @@ class GraphRAGService:
                 method=method,
                 engine_used="local-deterministic",
                 warnings=warnings,
+                notices=response_notices,
                 graph_url=graph_url,
             )
 
@@ -226,12 +239,14 @@ class GraphRAGService:
             method=method,
             engine_used=engine_used,
             warnings=warnings,
+            notices=response_notices,
             graph_url=graph_url,
         )
 
     def graph_data(
         self,
         query: str = "",
+        corpus_id: str = "",
         source_prefix: str = "",
         max_nodes: int = 80,
         min_weight: float = 1.0,
@@ -242,13 +257,14 @@ class GraphRAGService:
         available_sources = self._available_source_options()
         download_url = self._graph_download_url(
             normalized_query,
+            corpus_id,
             normalized_source,
             max_nodes,
             min_weight,
         )
 
         if not self._graphrag_query_artifacts_present():
-            return self._fallback_graph_data(
+            response = self._fallback_graph_data(
                 normalized_query,
                 normalized_source,
                 max_nodes,
@@ -260,11 +276,13 @@ class GraphRAGService:
                     "to the document-map fallback."
                 ),
             )
+            response.corpus_id = corpus_id
+            return response
 
         try:
             import pyarrow.parquet as pq
         except ImportError:
-            return self._fallback_graph_data(
+            response = self._fallback_graph_data(
                 normalized_query,
                 normalized_source,
                 max_nodes,
@@ -276,6 +294,8 @@ class GraphRAGService:
                     "switched to the document-map fallback."
                 ),
             )
+            response.corpus_id = corpus_id
+            return response
 
         entities_path = self.settings.graphrag_output_dir / "entities.parquet"
         relationships_path = self.settings.graphrag_output_dir / "relationships.parquet"
@@ -289,7 +309,7 @@ class GraphRAGService:
             text_units = pq.read_table(text_units_path).to_pylist()
         except Exception as error:  # pragma: no cover - defensive path for corrupt artifacts
             LOGGER.warning("Unable to load graph artifacts: %s", error)
-            return self._fallback_graph_data(
+            response = self._fallback_graph_data(
                 normalized_query,
                 normalized_source,
                 max_nodes,
@@ -301,6 +321,8 @@ class GraphRAGService:
                     "to the document-map fallback."
                 ),
             )
+            response.corpus_id = corpus_id
+            return response
 
         text_unit_to_documents = self._build_text_unit_document_index(documents)
         text_unit_index = self._build_text_unit_index(text_units, text_unit_to_documents)
@@ -462,6 +484,7 @@ class GraphRAGService:
         return GraphDataResponse(
             graph_ready=True,
             graph_kind="entity",
+            corpus_id=corpus_id,
             query=normalized_query,
             source_prefix=normalized_source,
             max_nodes=max_nodes,
@@ -1005,10 +1028,17 @@ class GraphRAGService:
                 break
         return citations
 
-    def _build_graph_url(self, question: str = "", source_prefix: str = "") -> str:
+    def _build_graph_url(
+        self,
+        question: str = "",
+        source_prefix: str = "",
+        corpus_id: str = "",
+    ) -> str:
         params: dict[str, str] = {}
         if question.strip():
             params["query"] = question.strip()
+        if corpus_id.strip():
+            params["corpus_id"] = corpus_id.strip()
         if source_prefix.strip():
             params["source_prefix"] = source_prefix.strip()
         suffix = f"?{urlencode(params)}" if params else ""
@@ -1017,6 +1047,7 @@ class GraphRAGService:
     def _graph_download_url(
         self,
         query: str = "",
+        corpus_id: str = "",
         source_prefix: str = "",
         max_nodes: int = 80,
         min_weight: float = 1.0,
@@ -1024,6 +1055,8 @@ class GraphRAGService:
         params: dict[str, str] = {}
         if query.strip():
             params["query"] = query.strip()
+        if corpus_id.strip():
+            params["corpus_id"] = corpus_id.strip()
         if source_prefix.strip():
             params["source_prefix"] = source_prefix.strip()
         if max_nodes != 80:
