@@ -1,0 +1,1415 @@
+{
+  "metadata": {
+    "generated_at": "2026-03-08T14:45:28.605747+01:00",
+    "runner": "docker",
+    "docker_container": "grafrag-experimentation-bridge-1",
+    "git_commit": "5d25c66",
+    "host_os": "macOS-26.3-arm64-arm-64bit",
+    "host_python": "3.11.3",
+    "runner_versions": {
+      "python_version": "3.12.13",
+      "graphrag_version": "3.0.6",
+      "litellm_version": "1.82.0",
+      "openai_version": "2.26.0"
+    },
+    "optimized_profile": "v5",
+    "reference_files": [
+      "benchmarks/results.json",
+      "benchmarks/results.v3.json",
+      "benchmarks/results.v4.json"
+    ]
+  },
+  "corpus": {
+    "document_count": 17,
+    "total_bytes": 659262,
+    "documents": [
+      {
+        "path": "README.md",
+        "size_bytes": 377
+      },
+      {
+        "path": "sample-corpus.md",
+        "size_bytes": 579
+      },
+      {
+        "path": "security-notes.md",
+        "size_bytes": 324
+      },
+      {
+        "path": "wikipedia-medieval-anglo-french-wars/00-overview.md",
+        "size_bytes": 1848
+      },
+      {
+        "path": "wikipedia-medieval-anglo-french-wars/01-guerre-de-cent-ans.md",
+        "size_bytes": 157061
+      },
+      {
+        "path": "wikipedia-medieval-anglo-french-wars/02-philippe-vi-de-valois.md",
+        "size_bytes": 74802
+      },
+      {
+        "path": "wikipedia-medieval-anglo-french-wars/03-edouard-iii.md",
+        "size_bytes": 76847
+      },
+      {
+        "path": "wikipedia-medieval-anglo-french-wars/04-bataille-de-crecy.md",
+        "size_bytes": 23209
+      },
+      {
+        "path": "wikipedia-medieval-anglo-french-wars/05-bataille-de-poitiers-1356.md",
+        "size_bytes": 22859
+      },
+      {
+        "path": "wikipedia-medieval-anglo-french-wars/06-traite-de-bretigny.md",
+        "size_bytes": 7639
+      },
+      {
+        "path": "wikipedia-medieval-anglo-french-wars/07-charles-v-le-sage.md",
+        "size_bytes": 164909
+      },
+      {
+        "path": "wikipedia-medieval-anglo-french-wars/08-bataille-d-azincourt.md",
+        "size_bytes": 25613
+      },
+      {
+        "path": "wikipedia-medieval-anglo-french-wars/09-henri-v-roi-d-angleterre.md",
+        "size_bytes": 15080
+      },
+      {
+        "path": "wikipedia-medieval-anglo-french-wars/10-traite-de-troyes.md",
+        "size_bytes": 8277
+      },
+      {
+        "path": "wikipedia-medieval-anglo-french-wars/11-bataille-et-siege-d-orleans.md",
+        "size_bytes": 1330
+      },
+      {
+        "path": "wikipedia-medieval-anglo-french-wars/12-jeanne-d-arc.md",
+        "size_bytes": 77461
+      },
+      {
+        "path": "wikipedia-medieval-anglo-french-wars/99-test-questions.md",
+        "size_bytes": 1047
+      }
+    ]
+  },
+  "reference_runs": {
+    "baseline_cold": {
+      "name": "baseline_cold",
+      "settings_file": "settings.baseline.yaml",
+      "settings_path": "graphrag/benchmarks/workspaces/20260308-104938-baseline_cold/settings.yaml",
+      "workspace_path": "graphrag/benchmarks/workspaces/20260308-104938-baseline_cold",
+      "artifact_path": "benchmarks/artifacts/20260308-104938/baseline_cold",
+      "method": "standard",
+      "cache_state": "cold",
+      "chat_model": "gpt-oss-120b",
+      "embedding_model": "bge-multilingual-gemma2",
+      "embedding_vector_size": 3584,
+      "chunking": {
+        "size": 1200,
+        "overlap": 100
+      },
+      "started_at": "2026-03-08T10:49:39.002520+01:00",
+      "ended_at": "2026-03-08T11:18:51.709566+01:00",
+      "duration_seconds": 1752.712,
+      "quality_note": "Reference run with standard indexing, baseline chunking, and the baseline chat/embedding models.",
+      "documents": 17,
+      "chunks": 157,
+      "entities": 3653,
+      "relationships": 5203,
+      "communities": 712,
+      "community_reports": 712,
+      "phase_timings": {
+        "phases_seconds": {
+          "create_base_text_units": 1.063,
+          "create_final_documents": 0.004,
+          "extract_graph": 846.963,
+          "finalize_graph": 2.019,
+          "extract_covariates": 0.0,
+          "create_communities": 0.988,
+          "create_final_text_units": 0.988,
+          "create_community_reports": 577.003,
+          "generate_text_embeddings": 319.03
+        },
+        "progress": {
+          "chunker_progress": {
+            "current": 17,
+            "total": 17
+          },
+          "extract_graph_progress": {
+            "current": 157,
+            "total": 157
+          },
+          "level_3_summarize_communities_progress": {
+            "current": 37,
+            "total": 37
+          },
+          "level_2_summarize_communities_progress": {
+            "current": 435,
+            "total": 435
+          },
+          "level_1_summarize_communities_progress": {
+            "current": 215,
+            "total": 215
+          },
+          "level_0_summarize_communities_progress": {
+            "current": 25,
+            "total": 25
+          },
+          "generate_embeddings_progress": {
+            "current": 29,
+            "total": 29
+          }
+        },
+        "started_at": "2026-03-08T09:49:41.099300",
+        "ended_at": "2026-03-08T10:18:51.001900"
+      },
+      "cache_metrics": {
+        "file_count": 2437,
+        "categories": {
+          "community_reporting": {
+            "files": 712,
+            "attempted_request_count": 712,
+            "successful_response_count": 0,
+            "failed_response_count": 0,
+            "responses_with_tokens": 712,
+            "prompt_tokens": 2321716,
+            "completion_tokens": 1098936,
+            "total_tokens": 3420652,
+            "compute_duration_seconds": 11601.359,
+            "cost": 0.0
+          },
+          "extract_graph": {
+            "files": 314,
+            "attempted_request_count": 314,
+            "successful_response_count": 0,
+            "failed_response_count": 0,
+            "responses_with_tokens": 314,
+            "prompt_tokens": 1371290,
+            "completion_tokens": 1395528,
+            "total_tokens": 2766818,
+            "compute_duration_seconds": 14205.804,
+            "cost": 0.0
+          },
+          "summarize_descriptions": {
+            "files": 1074,
+            "attempted_request_count": 1074,
+            "successful_response_count": 0,
+            "failed_response_count": 0,
+            "responses_with_tokens": 1074,
+            "prompt_tokens": 327035,
+            "completion_tokens": 491338,
+            "total_tokens": 818373,
+            "compute_duration_seconds": 5112.548,
+            "cost": 0.0
+          },
+          "text_embedding": {
+            "files": 337,
+            "attempted_request_count": 337,
+            "successful_response_count": 0,
+            "failed_response_count": 0,
+            "responses_with_tokens": 337,
+            "prompt_tokens": 1120416,
+            "completion_tokens": 0,
+            "total_tokens": 1120416,
+            "compute_duration_seconds": 3195.28,
+            "cost": 0.0
+          }
+        },
+        "llm_calls_observed": 2437,
+        "total_tokens": 8126259,
+        "estimated_cost": null
+      }
+    },
+    "optimized_v2_cold": {
+      "name": "optimized_cold",
+      "settings_file": "settings.optimized.v2.yaml",
+      "settings_path": "graphrag/benchmarks/workspaces/20260308-104938-optimized_cold/settings.yaml",
+      "workspace_path": "graphrag/benchmarks/workspaces/20260308-104938-optimized_cold",
+      "artifact_path": "benchmarks/artifacts/20260308-104938/optimized_cold",
+      "method": "standard",
+      "cache_state": "cold",
+      "chat_model": "mistral-small-3.2-24b-instruct-2506",
+      "embedding_model": "qwen3-embedding-8b",
+      "embedding_vector_size": 4096,
+      "chunking": {
+        "size": 2200,
+        "overlap": 64
+      },
+      "started_at": "2026-03-08T11:18:53.013907+01:00",
+      "ended_at": "2026-03-08T11:38:42.081601+01:00",
+      "duration_seconds": 1189.072,
+      "quality_note": "Standard indexing kept, with more aggressive concurrency, larger chunks, shorter summaries, and leaner community reports to reduce cold latency. Expect a sparser graph and less detailed community reports than v1.",
+      "documents": 17,
+      "chunks": 84,
+      "entities": 1844,
+      "relationships": 3472,
+      "communities": 300,
+      "community_reports": 300,
+      "phase_timings": {
+        "phases_seconds": {
+          "create_base_text_units": 1.96,
+          "create_final_documents": 0.003,
+          "extract_graph": 713.967,
+          "finalize_graph": 1.016,
+          "extract_covariates": 0.0,
+          "create_communities": 0.055,
+          "create_final_text_units": 0.961,
+          "create_community_reports": 276.969,
+          "generate_text_embeddings": 190.009
+        },
+        "progress": {
+          "chunker_progress": {
+            "current": 17,
+            "total": 17
+          },
+          "extract_graph_progress": {
+            "current": 84,
+            "total": 84
+          },
+          "level_3_summarize_communities_progress": {
+            "current": 29,
+            "total": 29
+          },
+          "level_2_summarize_communities_progress": {
+            "current": 134,
+            "total": 134
+          },
+          "level_1_summarize_communities_progress": {
+            "current": 119,
+            "total": 119
+          },
+          "level_0_summarize_communities_progress": {
+            "current": 18,
+            "total": 18
+          },
+          "generate_embeddings_progress": {
+            "current": 26,
+            "total": 26
+          }
+        },
+        "started_at": "2026-03-08T10:18:56.040600",
+        "ended_at": "2026-03-08T10:38:41.024200"
+      },
+      "cache_metrics": {
+        "file_count": 1424,
+        "categories": {
+          "community_reporting": {
+            "files": 300,
+            "attempted_request_count": 300,
+            "successful_response_count": 0,
+            "failed_response_count": 0,
+            "responses_with_tokens": 300,
+            "prompt_tokens": 1050624,
+            "completion_tokens": 396725,
+            "total_tokens": 1447349,
+            "compute_duration_seconds": 4500.439,
+            "cost": 0.0
+          },
+          "extract_graph": {
+            "files": 168,
+            "attempted_request_count": 168,
+            "successful_response_count": 0,
+            "failed_response_count": 0,
+            "responses_with_tokens": 168,
+            "prompt_tokens": 843068,
+            "completion_tokens": 407228,
+            "total_tokens": 1250296,
+            "compute_duration_seconds": 9263.64,
+            "cost": 0.0
+          },
+          "summarize_descriptions": {
+            "files": 828,
+            "attempted_request_count": 828,
+            "successful_response_count": 0,
+            "failed_response_count": 0,
+            "responses_with_tokens": 828,
+            "prompt_tokens": 172211,
+            "completion_tokens": 156336,
+            "total_tokens": 328547,
+            "compute_duration_seconds": 1468.468,
+            "cost": 0.0
+          },
+          "text_embedding": {
+            "files": 128,
+            "attempted_request_count": 128,
+            "successful_response_count": 0,
+            "failed_response_count": 0,
+            "responses_with_tokens": 128,
+            "prompt_tokens": 668699,
+            "completion_tokens": 0,
+            "total_tokens": 668699,
+            "compute_duration_seconds": 2566.951,
+            "cost": 0.0
+          }
+        },
+        "llm_calls_observed": 1424,
+        "total_tokens": 3694891,
+        "estimated_cost": null
+      }
+    },
+    "optimized_v2_warm": {
+      "name": "optimized_warm",
+      "settings_file": "settings.optimized.v2.yaml",
+      "settings_path": "graphrag/benchmarks/workspaces/20260308-104938-optimized_cold/settings.yaml",
+      "workspace_path": "graphrag/benchmarks/workspaces/20260308-104938-optimized_cold",
+      "artifact_path": "benchmarks/artifacts/20260308-104938/optimized_warm",
+      "method": "standard",
+      "cache_state": "warm",
+      "chat_model": "mistral-small-3.2-24b-instruct-2506",
+      "embedding_model": "qwen3-embedding-8b",
+      "embedding_vector_size": 4096,
+      "chunking": {
+        "size": 2200,
+        "overlap": 64
+      },
+      "started_at": "2026-03-08T11:38:43.175110+01:00",
+      "ended_at": "2026-03-08T11:43:17.048778+01:00",
+      "duration_seconds": 273.875,
+      "quality_note": "Same optimized profile rerun with a preserved GraphRAG cache.",
+      "documents": 17,
+      "chunks": 84,
+      "entities": 1844,
+      "relationships": 3472,
+      "communities": 300,
+      "community_reports": 300,
+      "phase_timings": {
+        "phases_seconds": {
+          "create_base_text_units": 1.968,
+          "create_final_documents": 0.004,
+          "extract_graph": 77.951,
+          "finalize_graph": 1.023,
+          "extract_covariates": 0.0,
+          "create_communities": 0.058,
+          "create_final_text_units": 0.959,
+          "create_community_reports": 103.959,
+          "generate_text_embeddings": 83.995
+        },
+        "progress": {
+          "chunker_progress": {
+            "current": 17,
+            "total": 17
+          },
+          "extract_graph_progress": {
+            "current": 84,
+            "total": 84
+          },
+          "level_3_summarize_communities_progress": {
+            "current": 29,
+            "total": 29
+          },
+          "level_2_summarize_communities_progress": {
+            "current": 134,
+            "total": 134
+          },
+          "level_1_summarize_communities_progress": {
+            "current": 119,
+            "total": 119
+          },
+          "level_0_summarize_communities_progress": {
+            "current": 18,
+            "total": 18
+          },
+          "generate_embeddings_progress": {
+            "current": 26,
+            "total": 26
+          }
+        },
+        "started_at": "2026-03-08T10:38:46.057600",
+        "ended_at": "2026-03-08T10:43:16.010200"
+      },
+      "cache_metrics": {
+        "file_count": 1424,
+        "categories": {
+          "community_reporting": {
+            "files": 300,
+            "attempted_request_count": 300,
+            "successful_response_count": 0,
+            "failed_response_count": 0,
+            "responses_with_tokens": 300,
+            "prompt_tokens": 1050624,
+            "completion_tokens": 396725,
+            "total_tokens": 1447349,
+            "compute_duration_seconds": 4500.439,
+            "cost": 0.0
+          },
+          "extract_graph": {
+            "files": 168,
+            "attempted_request_count": 168,
+            "successful_response_count": 0,
+            "failed_response_count": 0,
+            "responses_with_tokens": 168,
+            "prompt_tokens": 843068,
+            "completion_tokens": 407228,
+            "total_tokens": 1250296,
+            "compute_duration_seconds": 9263.64,
+            "cost": 0.0
+          },
+          "summarize_descriptions": {
+            "files": 828,
+            "attempted_request_count": 828,
+            "successful_response_count": 0,
+            "failed_response_count": 0,
+            "responses_with_tokens": 828,
+            "prompt_tokens": 172211,
+            "completion_tokens": 156336,
+            "total_tokens": 328547,
+            "compute_duration_seconds": 1468.468,
+            "cost": 0.0
+          },
+          "text_embedding": {
+            "files": 128,
+            "attempted_request_count": 128,
+            "successful_response_count": 0,
+            "failed_response_count": 0,
+            "responses_with_tokens": 128,
+            "prompt_tokens": 668699,
+            "completion_tokens": 0,
+            "total_tokens": 668699,
+            "compute_duration_seconds": 2566.951,
+            "cost": 0.0
+          }
+        },
+        "llm_calls_observed": 1424,
+        "total_tokens": 3694891,
+        "estimated_cost": null
+      }
+    },
+    "optimized_v3_cold": {
+      "name": "optimized_v3_cold",
+      "settings_file": "settings.optimized.v3.yaml",
+      "settings_path": "graphrag/benchmarks/workspaces/20260308-115103-optimized_v3_cold/settings.yaml",
+      "workspace_path": "graphrag/benchmarks/workspaces/20260308-115103-optimized_v3_cold",
+      "artifact_path": "benchmarks/artifacts/20260308-115103-v3/optimized_v3_cold",
+      "method": "standard",
+      "cache_state": "cold",
+      "chat_model": "mistral-small-3.2-24b-instruct-2506",
+      "embedding_model": "qwen3-embedding-8b",
+      "embedding_vector_size": 4096,
+      "chunking": {
+        "size": 2200,
+        "overlap": 64
+      },
+      "started_at": "2026-03-08T11:51:03.382330+01:00",
+      "ended_at": "2026-03-08T12:11:38.686033+01:00",
+      "duration_seconds": 1235.308,
+      "quality_note": "Standard indexing kept, with the v2 chunking/report constraints and a much higher concurrency target to test endpoint saturation effects. Expect quality close to v2, but watch for throttling or unstable tail latency.",
+      "documents": 17,
+      "chunks": 84,
+      "entities": 1788,
+      "relationships": 3274,
+      "communities": 278,
+      "community_reports": 278,
+      "phase_timings": {
+        "phases_seconds": {
+          "create_base_text_units": 1.07,
+          "create_final_documents": 0.004,
+          "extract_graph": 775.014,
+          "finalize_graph": 1.915,
+          "extract_covariates": 0.0,
+          "create_communities": 0.056,
+          "create_final_text_units": 0.955,
+          "create_community_reports": 273.007,
+          "generate_text_embeddings": 178.041
+        },
+        "progress": {
+          "chunker_progress": {
+            "current": 17,
+            "total": 17
+          },
+          "extract_graph_progress": {
+            "current": 84,
+            "total": 84
+          },
+          "level_4_summarize_communities_progress": {
+            "current": 4,
+            "total": 4
+          },
+          "level_3_summarize_communities_progress": {
+            "current": 22,
+            "total": 22
+          },
+          "level_2_summarize_communities_progress": {
+            "current": 139,
+            "total": 139
+          },
+          "level_1_summarize_communities_progress": {
+            "current": 97,
+            "total": 97
+          },
+          "level_0_summarize_communities_progress": {
+            "current": 16,
+            "total": 16
+          },
+          "generate_embeddings_progress": {
+            "current": 26,
+            "total": 26
+          }
+        },
+        "started_at": "2026-03-08T10:51:06.078900",
+        "ended_at": "2026-03-08T11:11:37.079000"
+      },
+      "cache_metrics": {
+        "file_count": 1420,
+        "categories": {
+          "community_reporting": {
+            "files": 276,
+            "attempted_request_count": 276,
+            "successful_response_count": 0,
+            "failed_response_count": 0,
+            "responses_with_tokens": 276,
+            "prompt_tokens": 985257,
+            "completion_tokens": 358397,
+            "total_tokens": 1343654,
+            "compute_duration_seconds": 4525.125,
+            "cost": 0.0
+          },
+          "extract_graph": {
+            "files": 168,
+            "attempted_request_count": 168,
+            "successful_response_count": 0,
+            "failed_response_count": 0,
+            "responses_with_tokens": 168,
+            "prompt_tokens": 858042,
+            "completion_tokens": 504810,
+            "total_tokens": 1362852,
+            "compute_duration_seconds": 9195.066,
+            "cost": 0.0
+          },
+          "summarize_descriptions": {
+            "files": 852,
+            "attempted_request_count": 852,
+            "successful_response_count": 0,
+            "failed_response_count": 0,
+            "responses_with_tokens": 852,
+            "prompt_tokens": 178573,
+            "completion_tokens": 160937,
+            "total_tokens": 339510,
+            "compute_duration_seconds": 1779.563,
+            "cost": 0.0
+          },
+          "text_embedding": {
+            "files": 124,
+            "attempted_request_count": 124,
+            "successful_response_count": 0,
+            "failed_response_count": 0,
+            "responses_with_tokens": 124,
+            "prompt_tokens": 645868,
+            "completion_tokens": 0,
+            "total_tokens": 645868,
+            "compute_duration_seconds": 3567.644,
+            "cost": 0.0
+          }
+        },
+        "llm_calls_observed": 1420,
+        "total_tokens": 3691884,
+        "estimated_cost": null
+      }
+    },
+    "optimized_v3_warm": {
+      "name": "optimized_v3_warm",
+      "settings_file": "settings.optimized.v3.yaml",
+      "settings_path": "graphrag/benchmarks/workspaces/20260308-115103-optimized_v3_cold/settings.yaml",
+      "workspace_path": "graphrag/benchmarks/workspaces/20260308-115103-optimized_v3_cold",
+      "artifact_path": "benchmarks/artifacts/20260308-115103-v3/optimized_v3_warm",
+      "method": "standard",
+      "cache_state": "warm",
+      "chat_model": "mistral-small-3.2-24b-instruct-2506",
+      "embedding_model": "qwen3-embedding-8b",
+      "embedding_vector_size": 4096,
+      "chunking": {
+        "size": 2200,
+        "overlap": 64
+      },
+      "started_at": "2026-03-08T12:11:39.800515+01:00",
+      "ended_at": "2026-03-08T12:15:54.070716+01:00",
+      "duration_seconds": 254.271,
+      "quality_note": "Same v3 profile rerun with a preserved GraphRAG cache.",
+      "documents": 17,
+      "chunks": 84,
+      "entities": 1788,
+      "relationships": 3274,
+      "communities": 278,
+      "community_reports": 278,
+      "phase_timings": {
+        "phases_seconds": {
+          "create_base_text_units": 1.964,
+          "create_final_documents": 0.003,
+          "extract_graph": 74.022,
+          "finalize_graph": 1.005,
+          "extract_covariates": 0.0,
+          "create_communities": 0.954,
+          "create_final_text_units": 0.052,
+          "create_community_reports": 94.999,
+          "generate_text_embeddings": 76.954
+        },
+        "progress": {
+          "chunker_progress": {
+            "current": 17,
+            "total": 17
+          },
+          "extract_graph_progress": {
+            "current": 84,
+            "total": 84
+          },
+          "level_4_summarize_communities_progress": {
+            "current": 4,
+            "total": 4
+          },
+          "level_3_summarize_communities_progress": {
+            "current": 22,
+            "total": 22
+          },
+          "level_2_summarize_communities_progress": {
+            "current": 139,
+            "total": 139
+          },
+          "level_1_summarize_communities_progress": {
+            "current": 97,
+            "total": 97
+          },
+          "level_0_summarize_communities_progress": {
+            "current": 16,
+            "total": 16
+          },
+          "generate_embeddings_progress": {
+            "current": 26,
+            "total": 26
+          }
+        },
+        "started_at": "2026-03-08T11:11:43.033800",
+        "ended_at": "2026-03-08T11:15:53.026300"
+      },
+      "cache_metrics": {
+        "file_count": 1420,
+        "categories": {
+          "community_reporting": {
+            "files": 276,
+            "attempted_request_count": 276,
+            "successful_response_count": 0,
+            "failed_response_count": 0,
+            "responses_with_tokens": 276,
+            "prompt_tokens": 985257,
+            "completion_tokens": 358397,
+            "total_tokens": 1343654,
+            "compute_duration_seconds": 4525.125,
+            "cost": 0.0
+          },
+          "extract_graph": {
+            "files": 168,
+            "attempted_request_count": 168,
+            "successful_response_count": 0,
+            "failed_response_count": 0,
+            "responses_with_tokens": 168,
+            "prompt_tokens": 858042,
+            "completion_tokens": 504810,
+            "total_tokens": 1362852,
+            "compute_duration_seconds": 9195.066,
+            "cost": 0.0
+          },
+          "summarize_descriptions": {
+            "files": 852,
+            "attempted_request_count": 852,
+            "successful_response_count": 0,
+            "failed_response_count": 0,
+            "responses_with_tokens": 852,
+            "prompt_tokens": 178573,
+            "completion_tokens": 160937,
+            "total_tokens": 339510,
+            "compute_duration_seconds": 1779.563,
+            "cost": 0.0
+          },
+          "text_embedding": {
+            "files": 124,
+            "attempted_request_count": 124,
+            "successful_response_count": 0,
+            "failed_response_count": 0,
+            "responses_with_tokens": 124,
+            "prompt_tokens": 645868,
+            "completion_tokens": 0,
+            "total_tokens": 645868,
+            "compute_duration_seconds": 3567.644,
+            "cost": 0.0
+          }
+        },
+        "llm_calls_observed": 1420,
+        "total_tokens": 3691884,
+        "estimated_cost": null
+      }
+    },
+    "optimized_v4_cold": {
+      "name": "optimized_v4_cold",
+      "settings_file": "settings.optimized.v4.yaml",
+      "settings_path": "graphrag/benchmarks/workspaces/20260308-124402-optimized_v4_cold/settings.yaml",
+      "workspace_path": "graphrag/benchmarks/workspaces/20260308-124402-optimized_v4_cold",
+      "artifact_path": "benchmarks/artifacts/20260308-124402-v4/optimized_v4_cold",
+      "method": "standard",
+      "cache_state": "cold",
+      "chat_model": "mistral-small-3.2-24b-instruct-2506",
+      "embedding_model": "qwen3-embedding-8b",
+      "embedding_vector_size": 4096,
+      "chunking": {
+        "size": 2200,
+        "overlap": 64
+      },
+      "started_at": "2026-03-08T12:44:02.423870+01:00",
+      "ended_at": "2026-03-08T13:04:10.862092+01:00",
+      "duration_seconds": 1208.441,
+      "quality_note": "Standard indexing kept, with a tail-aware rollback from v3 concurrency and slightly shorter description summaries to reduce extract_graph wall time. Expect quality close to v2/v3, with somewhat terser entity descriptions.",
+      "documents": 17,
+      "chunks": 84,
+      "entities": 1777,
+      "relationships": 3252,
+      "communities": 293,
+      "community_reports": 293,
+      "phase_timings": {
+        "phases_seconds": {
+          "create_base_text_units": 1.967,
+          "create_final_documents": 0.004,
+          "extract_graph": 775.954,
+          "finalize_graph": 1.011,
+          "extract_covariates": 0.0,
+          "create_communities": 0.056,
+          "create_final_text_units": 0.955,
+          "create_community_reports": 240.043,
+          "generate_text_embeddings": 184.922
+        },
+        "progress": {
+          "chunker_progress": {
+            "current": 17,
+            "total": 17
+          },
+          "extract_graph_progress": {
+            "current": 84,
+            "total": 84
+          },
+          "level_3_summarize_communities_progress": {
+            "current": 26,
+            "total": 26
+          },
+          "level_2_summarize_communities_progress": {
+            "current": 138,
+            "total": 138
+          },
+          "level_1_summarize_communities_progress": {
+            "current": 108,
+            "total": 108
+          },
+          "level_0_summarize_communities_progress": {
+            "current": 21,
+            "total": 21
+          },
+          "generate_embeddings_progress": {
+            "current": 26,
+            "total": 26
+          }
+        },
+        "started_at": "2026-03-08T11:44:05.069700",
+        "ended_at": "2026-03-08T12:04:10.018800"
+      },
+      "cache_metrics": {
+        "file_count": 1367,
+        "categories": {
+          "community_reporting": {
+            "files": 293,
+            "attempted_request_count": 293,
+            "successful_response_count": 0,
+            "failed_response_count": 0,
+            "responses_with_tokens": 293,
+            "prompt_tokens": 999001,
+            "completion_tokens": 372938,
+            "total_tokens": 1371939,
+            "compute_duration_seconds": 4399.083,
+            "cost": 0.0
+          },
+          "extract_graph": {
+            "files": 168,
+            "attempted_request_count": 168,
+            "successful_response_count": 0,
+            "failed_response_count": 0,
+            "responses_with_tokens": 168,
+            "prompt_tokens": 894670,
+            "completion_tokens": 532333,
+            "total_tokens": 1427003,
+            "compute_duration_seconds": 9607.547,
+            "cost": 0.0
+          },
+          "summarize_descriptions": {
+            "files": 782,
+            "attempted_request_count": 782,
+            "successful_response_count": 0,
+            "failed_response_count": 0,
+            "responses_with_tokens": 782,
+            "prompt_tokens": 162523,
+            "completion_tokens": 133650,
+            "total_tokens": 296173,
+            "compute_duration_seconds": 1290.811,
+            "cost": 0.0
+          },
+          "text_embedding": {
+            "files": 124,
+            "attempted_request_count": 124,
+            "successful_response_count": 0,
+            "failed_response_count": 0,
+            "responses_with_tokens": 124,
+            "prompt_tokens": 639841,
+            "completion_tokens": 0,
+            "total_tokens": 639841,
+            "compute_duration_seconds": 3029.243,
+            "cost": 0.0
+          }
+        },
+        "llm_calls_observed": 1367,
+        "total_tokens": 3734956,
+        "estimated_cost": null
+      }
+    },
+    "optimized_v4_warm": {
+      "name": "optimized_v4_warm",
+      "settings_file": "settings.optimized.v4.yaml",
+      "settings_path": "graphrag/benchmarks/workspaces/20260308-124402-optimized_v4_cold/settings.yaml",
+      "workspace_path": "graphrag/benchmarks/workspaces/20260308-124402-optimized_v4_cold",
+      "artifact_path": "benchmarks/artifacts/20260308-124402-v4/optimized_v4_warm",
+      "method": "standard",
+      "cache_state": "warm",
+      "chat_model": "mistral-small-3.2-24b-instruct-2506",
+      "embedding_model": "qwen3-embedding-8b",
+      "embedding_vector_size": 4096,
+      "chunking": {
+        "size": 2200,
+        "overlap": 64
+      },
+      "started_at": "2026-03-08T13:04:11.841641+01:00",
+      "ended_at": "2026-03-08T13:08:20.177771+01:00",
+      "duration_seconds": 248.337,
+      "quality_note": "Same v4 profile rerun with a preserved GraphRAG cache.",
+      "documents": 17,
+      "chunks": 84,
+      "entities": 1777,
+      "relationships": 3252,
+      "communities": 293,
+      "community_reports": 293,
+      "phase_timings": {
+        "phases_seconds": {
+          "create_base_text_units": 1.06,
+          "create_final_documents": 0.003,
+          "extract_graph": 73.932,
+          "finalize_graph": 1.009,
+          "extract_covariates": 0.0,
+          "create_communities": 0.05,
+          "create_final_text_units": 0.952,
+          "create_community_reports": 92.027,
+          "generate_text_embeddings": 74.976
+        },
+        "progress": {
+          "chunker_progress": {
+            "current": 17,
+            "total": 17
+          },
+          "extract_graph_progress": {
+            "current": 84,
+            "total": 84
+          },
+          "level_3_summarize_communities_progress": {
+            "current": 26,
+            "total": 26
+          },
+          "level_2_summarize_communities_progress": {
+            "current": 138,
+            "total": 138
+          },
+          "level_1_summarize_communities_progress": {
+            "current": 108,
+            "total": 108
+          },
+          "level_0_summarize_communities_progress": {
+            "current": 21,
+            "total": 21
+          },
+          "generate_embeddings_progress": {
+            "current": 26,
+            "total": 26
+          }
+        },
+        "started_at": "2026-03-08T12:04:14.079400",
+        "ended_at": "2026-03-08T12:08:19.032900"
+      },
+      "cache_metrics": {
+        "file_count": 1367,
+        "categories": {
+          "community_reporting": {
+            "files": 293,
+            "attempted_request_count": 293,
+            "successful_response_count": 0,
+            "failed_response_count": 0,
+            "responses_with_tokens": 293,
+            "prompt_tokens": 999001,
+            "completion_tokens": 372938,
+            "total_tokens": 1371939,
+            "compute_duration_seconds": 4399.083,
+            "cost": 0.0
+          },
+          "extract_graph": {
+            "files": 168,
+            "attempted_request_count": 168,
+            "successful_response_count": 0,
+            "failed_response_count": 0,
+            "responses_with_tokens": 168,
+            "prompt_tokens": 894670,
+            "completion_tokens": 532333,
+            "total_tokens": 1427003,
+            "compute_duration_seconds": 9607.547,
+            "cost": 0.0
+          },
+          "summarize_descriptions": {
+            "files": 782,
+            "attempted_request_count": 782,
+            "successful_response_count": 0,
+            "failed_response_count": 0,
+            "responses_with_tokens": 782,
+            "prompt_tokens": 162523,
+            "completion_tokens": 133650,
+            "total_tokens": 296173,
+            "compute_duration_seconds": 1290.811,
+            "cost": 0.0
+          },
+          "text_embedding": {
+            "files": 124,
+            "attempted_request_count": 124,
+            "successful_response_count": 0,
+            "failed_response_count": 0,
+            "responses_with_tokens": 124,
+            "prompt_tokens": 639841,
+            "completion_tokens": 0,
+            "total_tokens": 639841,
+            "compute_duration_seconds": 3029.243,
+            "cost": 0.0
+          }
+        },
+        "llm_calls_observed": 1367,
+        "total_tokens": 3734956,
+        "estimated_cost": null
+      }
+    }
+  },
+  "preflight": {
+    "optimized": {
+      "chat_model": "mistral-small-3.2-24b-instruct-2506",
+      "embedding_model": "qwen3-embedding-8b",
+      "embedding_vector_size": 4096,
+      "chat_response": "reused-from-existing-local-profile-family"
+    }
+  },
+  "runs": [
+    {
+      "name": "optimized_v5_cold",
+      "settings_file": "settings.optimized.v5.yaml",
+      "settings_path": "graphrag/benchmarks/workspaces/20260308-144529-optimized_v5_cold/settings.yaml",
+      "workspace_path": "graphrag/benchmarks/workspaces/20260308-144529-optimized_v5_cold",
+      "artifact_path": "benchmarks/artifacts/20260308-144529-v5/optimized_v5_cold",
+      "method": "standard",
+      "cache_state": "cold",
+      "chat_model": "mistral-small-3.2-24b-instruct-2506",
+      "embedding_model": "qwen3-embedding-8b",
+      "embedding_vector_size": 4096,
+      "chunking": {
+        "size": 2200,
+        "overlap": 64
+      },
+      "started_at": "2026-03-08T14:45:29.038974+01:00",
+      "ended_at": "2026-03-08T15:18:26.463930+01:00",
+      "duration_seconds": 1977.432,
+      "quality_note": "Standard indexing kept, with v2 cold-oriented concurrency, v4 shorter descriptions, and a narrower entity type set focused on person/geo/event to cut extract_graph work on the medieval-wars corpus. Expect fewer organization nodes and a more corpus-specific graph.",
+      "documents": 17,
+      "chunks": 84,
+      "entities": 1722,
+      "relationships": 2704,
+      "communities": 259,
+      "community_reports": 259,
+      "phase_timings": {
+        "phases_seconds": {
+          "create_base_text_units": 1.988,
+          "create_final_documents": 0.004,
+          "extract_graph": 996.071,
+          "finalize_graph": 0.994,
+          "extract_covariates": 0.0,
+          "create_communities": 0.948,
+          "create_final_text_units": 0.047,
+          "create_community_reports": 796.93,
+          "generate_text_embeddings": 175.051
+        },
+        "progress": {
+          "chunker_progress": {
+            "current": 17,
+            "total": 17
+          },
+          "extract_graph_progress": {
+            "current": 84,
+            "total": 84
+          },
+          "level_3_summarize_communities_progress": {
+            "current": 7,
+            "total": 7
+          },
+          "level_2_summarize_communities_progress": {
+            "current": 133,
+            "total": 133
+          },
+          "level_1_summarize_communities_progress": {
+            "current": 100,
+            "total": 100
+          },
+          "level_0_summarize_communities_progress": {
+            "current": 19,
+            "total": 19
+          },
+          "generate_embeddings_progress": {
+            "current": 26,
+            "total": 26
+          }
+        },
+        "started_at": "2026-03-08T13:45:32.089500",
+        "ended_at": "2026-03-08T14:18:25.073300"
+      },
+      "cache_metrics": {
+        "file_count": 1276,
+        "categories": {
+          "community_reporting": {
+            "files": 259,
+            "attempted_request_count": 259,
+            "successful_response_count": 0,
+            "failed_response_count": 0,
+            "responses_with_tokens": 259,
+            "prompt_tokens": 884165,
+            "completion_tokens": 323364,
+            "total_tokens": 1207529,
+            "compute_duration_seconds": 5932.891,
+            "cost": 0.0
+          },
+          "extract_graph": {
+            "files": 168,
+            "attempted_request_count": 168,
+            "successful_response_count": 0,
+            "failed_response_count": 0,
+            "responses_with_tokens": 168,
+            "prompt_tokens": 818406,
+            "completion_tokens": 350125,
+            "total_tokens": 1168531,
+            "compute_duration_seconds": 8480.989,
+            "cost": 0.0
+          },
+          "summarize_descriptions": {
+            "files": 732,
+            "attempted_request_count": 732,
+            "successful_response_count": 0,
+            "failed_response_count": 0,
+            "responses_with_tokens": 732,
+            "prompt_tokens": 156516,
+            "completion_tokens": 125093,
+            "total_tokens": 281609,
+            "compute_duration_seconds": 2000.456,
+            "cost": 0.0
+          },
+          "text_embedding": {
+            "files": 117,
+            "attempted_request_count": 117,
+            "successful_response_count": 0,
+            "failed_response_count": 0,
+            "responses_with_tokens": 117,
+            "prompt_tokens": 597341,
+            "completion_tokens": 0,
+            "total_tokens": 597341,
+            "compute_duration_seconds": 2384.61,
+            "cost": 0.0
+          }
+        },
+        "llm_calls_observed": 1276,
+        "total_tokens": 3255010,
+        "estimated_cost": null
+      }
+    },
+    {
+      "name": "optimized_v5_warm",
+      "settings_file": "settings.optimized.v5.yaml",
+      "settings_path": "graphrag/benchmarks/workspaces/20260308-144529-optimized_v5_cold/settings.yaml",
+      "workspace_path": "graphrag/benchmarks/workspaces/20260308-144529-optimized_v5_cold",
+      "artifact_path": "benchmarks/artifacts/20260308-144529-v5/optimized_v5_warm",
+      "method": "standard",
+      "cache_state": "warm",
+      "chat_model": "mistral-small-3.2-24b-instruct-2506",
+      "embedding_model": "qwen3-embedding-8b",
+      "embedding_vector_size": 4096,
+      "chunking": {
+        "size": 2200,
+        "overlap": 64
+      },
+      "started_at": "2026-03-08T15:18:27.446941+01:00",
+      "ended_at": "2026-03-08T15:22:16.162381+01:00",
+      "duration_seconds": 228.716,
+      "quality_note": "Same v5 profile rerun with a preserved GraphRAG cache.",
+      "documents": 17,
+      "chunks": 84,
+      "entities": 1722,
+      "relationships": 2704,
+      "communities": 259,
+      "community_reports": 259,
+      "phase_timings": {
+        "phases_seconds": {
+          "create_base_text_units": 1.056,
+          "create_final_documents": 0.003,
+          "extract_graph": 68.944,
+          "finalize_graph": 0.987,
+          "extract_covariates": 0.0,
+          "create_communities": 0.046,
+          "create_final_text_units": 0.948,
+          "create_community_reports": 81.029,
+          "generate_text_embeddings": 70.963
+        },
+        "progress": {
+          "chunker_progress": {
+            "current": 17,
+            "total": 17
+          },
+          "extract_graph_progress": {
+            "current": 84,
+            "total": 84
+          },
+          "level_3_summarize_communities_progress": {
+            "current": 7,
+            "total": 7
+          },
+          "level_2_summarize_communities_progress": {
+            "current": 133,
+            "total": 133
+          },
+          "level_1_summarize_communities_progress": {
+            "current": 100,
+            "total": 100
+          },
+          "level_0_summarize_communities_progress": {
+            "current": 19,
+            "total": 19
+          },
+          "generate_embeddings_progress": {
+            "current": 26,
+            "total": 26
+          }
+        },
+        "started_at": "2026-03-08T14:18:30.097400",
+        "ended_at": "2026-03-08T14:22:15.010300"
+      },
+      "cache_metrics": {
+        "file_count": 1276,
+        "categories": {
+          "community_reporting": {
+            "files": 259,
+            "attempted_request_count": 259,
+            "successful_response_count": 0,
+            "failed_response_count": 0,
+            "responses_with_tokens": 259,
+            "prompt_tokens": 884165,
+            "completion_tokens": 323364,
+            "total_tokens": 1207529,
+            "compute_duration_seconds": 5932.891,
+            "cost": 0.0
+          },
+          "extract_graph": {
+            "files": 168,
+            "attempted_request_count": 168,
+            "successful_response_count": 0,
+            "failed_response_count": 0,
+            "responses_with_tokens": 168,
+            "prompt_tokens": 818406,
+            "completion_tokens": 350125,
+            "total_tokens": 1168531,
+            "compute_duration_seconds": 8480.989,
+            "cost": 0.0
+          },
+          "summarize_descriptions": {
+            "files": 732,
+            "attempted_request_count": 732,
+            "successful_response_count": 0,
+            "failed_response_count": 0,
+            "responses_with_tokens": 732,
+            "prompt_tokens": 156516,
+            "completion_tokens": 125093,
+            "total_tokens": 281609,
+            "compute_duration_seconds": 2000.456,
+            "cost": 0.0
+          },
+          "text_embedding": {
+            "files": 117,
+            "attempted_request_count": 117,
+            "successful_response_count": 0,
+            "failed_response_count": 0,
+            "responses_with_tokens": 117,
+            "prompt_tokens": 597341,
+            "completion_tokens": 0,
+            "total_tokens": 597341,
+            "compute_duration_seconds": 2384.61,
+            "cost": 0.0
+          }
+        },
+        "llm_calls_observed": 1276,
+        "total_tokens": 3255010,
+        "estimated_cost": null
+      }
+    }
+  ],
+  "comparisons": {
+    "vs_baseline_cold": {
+      "baseline_run": "baseline_cold",
+      "optimized_run": "optimized_v5_cold",
+      "absolute_gain_seconds": -224.72,
+      "relative_gain_percent": -12.82
+    },
+    "vs_v2_cold": {
+      "baseline_run": "optimized_cold",
+      "optimized_run": "optimized_v5_cold",
+      "absolute_gain_seconds": -788.36,
+      "relative_gain_percent": -66.3
+    },
+    "vs_v3_cold": {
+      "baseline_run": "optimized_v3_cold",
+      "optimized_run": "optimized_v5_cold",
+      "absolute_gain_seconds": -742.124,
+      "relative_gain_percent": -60.08
+    },
+    "vs_v4_cold": {
+      "baseline_run": "optimized_v4_cold",
+      "optimized_run": "optimized_v5_cold",
+      "absolute_gain_seconds": -768.991,
+      "relative_gain_percent": -63.63
+    },
+    "warm_vs_cold": {
+      "baseline_run": "optimized_v5_cold",
+      "optimized_run": "optimized_v5_warm",
+      "absolute_gain_seconds": 1748.716,
+      "relative_gain_percent": 88.43
+    },
+    "vs_v2_warm": {
+      "baseline_run": "optimized_warm",
+      "optimized_run": "optimized_v5_warm",
+      "absolute_gain_seconds": 45.159,
+      "relative_gain_percent": 16.49
+    },
+    "vs_v3_warm": {
+      "baseline_run": "optimized_v3_warm",
+      "optimized_run": "optimized_v5_warm",
+      "absolute_gain_seconds": 25.555,
+      "relative_gain_percent": 10.05
+    },
+    "vs_v4_warm": {
+      "baseline_run": "optimized_v4_warm",
+      "optimized_run": "optimized_v5_warm",
+      "absolute_gain_seconds": 19.621,
+      "relative_gain_percent": 7.9
+    }
+  },
+  "shape_deltas": {
+    "vs_baseline": {
+      "chunks": [
+        157,
+        84
+      ],
+      "entities": [
+        3653,
+        1722
+      ],
+      "relationships": [
+        5203,
+        2704
+      ],
+      "community_reports": [
+        712,
+        259
+      ],
+      "llm_calls": [
+        2437,
+        1276
+      ],
+      "tokens": [
+        8126259,
+        3255010
+      ]
+    },
+    "vs_v2": {
+      "chunks": [
+        84,
+        84
+      ],
+      "entities": [
+        1844,
+        1722
+      ],
+      "relationships": [
+        3472,
+        2704
+      ],
+      "community_reports": [
+        300,
+        259
+      ],
+      "llm_calls": [
+        1424,
+        1276
+      ],
+      "tokens": [
+        3694891,
+        3255010
+      ]
+    },
+    "vs_v3": {
+      "chunks": [
+        84,
+        84
+      ],
+      "entities": [
+        1788,
+        1722
+      ],
+      "relationships": [
+        3274,
+        2704
+      ],
+      "community_reports": [
+        278,
+        259
+      ],
+      "llm_calls": [
+        1420,
+        1276
+      ],
+      "tokens": [
+        3691884,
+        3255010
+      ]
+    },
+    "vs_v4": {
+      "chunks": [
+        84,
+        84
+      ],
+      "entities": [
+        1777,
+        1722
+      ],
+      "relationships": [
+        3252,
+        2704
+      ],
+      "community_reports": [
+        293,
+        259
+      ],
+      "llm_calls": [
+        1367,
+        1276
+      ],
+      "tokens": [
+        3734956,
+        3255010
+      ]
+    }
+  }
+}

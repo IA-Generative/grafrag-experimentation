@@ -107,6 +107,17 @@ OPTIMIZED_PROFILES = {
             "descriptions."
         ),
     ),
+    "v5": OptimizedProfileSpec(
+        name="v5",
+        settings_file="settings.optimized.v5.yaml",
+        chunk_size=2200,
+        chunk_overlap=64,
+        quality_note=(
+            "Standard indexing kept, with v2 cold-oriented concurrency, v4 shorter descriptions, and a narrower "
+            "entity type set focused on person/geo/event to cut extract_graph work on the medieval-wars corpus. "
+            "Expect fewer organization nodes and a more corpus-specific graph."
+        ),
+    ),
 }
 
 
