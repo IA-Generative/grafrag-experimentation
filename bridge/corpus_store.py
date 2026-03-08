@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+import shutil
 import uuid
 from contextlib import contextmanager
 from datetime import UTC, datetime
@@ -15,6 +16,12 @@ from corpus_models import CreateCorpusRequest
 
 def utcnow() -> str:
     return datetime.now(UTC).replace(microsecond=0).isoformat()
+
+
+class DuplicateCorpusSlugError(ValueError):
+    def __init__(self, slug: str) -> None:
+        super().__init__(f"A corpus with slug '{slug}' already exists.")
+        self.slug = slug
 
 
 class CorpusStore:
@@ -207,6 +214,7 @@ class CorpusStore:
         self.initialize()
         conn = sqlite3.connect(self.db_path)
         conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA foreign_keys = ON")
         try:
             yield conn
             conn.commit()
@@ -217,54 +225,59 @@ class CorpusStore:
         corpus_id = f"corpus-{uuid.uuid4().hex[:12]}"
         source_id = f"source-{uuid.uuid4().hex[:12]}"
         now = utcnow()
-        with self.connection() as conn:
-            conn.execute(
-                """
-                INSERT INTO corpora (
-                    id, slug, name, description, workflow_state, active_version_id,
-                    created_by, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, 'idle', NULL, ?, ?, ?)
-                """,
-                (
-                    corpus_id,
-                    request.slug,
-                    request.name,
-                    request.description,
-                    user.email or user.preferred_username,
-                    now,
-                    now,
-                ),
-            )
-            conn.execute(
-                """
-                INSERT INTO corpus_sources (
-                    id, corpus_id, source_kind, source_name, config_json, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    source_id,
-                    corpus_id,
-                    request.source_kind,
-                    request.source_name,
-                    json.dumps(request.source_config, ensure_ascii=True),
-                    now,
-                    now,
-                ),
-            )
-            grants = self._normalized_grants(
-                request.allowed_groups,
-                request.allowed_users,
-                user,
-            )
-            for principal_type, principal_value in grants:
+        try:
+            with self.connection() as conn:
                 conn.execute(
                     """
-                    INSERT OR IGNORE INTO corpus_acl (
-                        corpus_id, principal_type, principal_value, created_at
-                    ) VALUES (?, ?, ?, ?)
+                    INSERT INTO corpora (
+                        id, slug, name, description, workflow_state, active_version_id,
+                        created_by, created_at, updated_at
+                    ) VALUES (?, ?, ?, ?, 'idle', NULL, ?, ?, ?)
                     """,
-                    (corpus_id, principal_type, principal_value, now),
+                    (
+                        corpus_id,
+                        request.slug,
+                        request.name,
+                        request.description,
+                        user.email or user.preferred_username,
+                        now,
+                        now,
+                    ),
                 )
+                conn.execute(
+                    """
+                    INSERT INTO corpus_sources (
+                        id, corpus_id, source_kind, source_name, config_json, created_at, updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        source_id,
+                        corpus_id,
+                        request.source_kind,
+                        request.source_name,
+                        json.dumps(request.source_config, ensure_ascii=True),
+                        now,
+                        now,
+                    ),
+                )
+                grants = self._normalized_grants(
+                    request.allowed_groups,
+                    request.allowed_users,
+                    user,
+                )
+                for principal_type, principal_value in grants:
+                    conn.execute(
+                        """
+                        INSERT OR IGNORE INTO corpus_acl (
+                            corpus_id, principal_type, principal_value, created_at
+                        ) VALUES (?, ?, ?, ?)
+                        """,
+                        (corpus_id, principal_type, principal_value, now),
+                    )
+        except sqlite3.IntegrityError as error:
+            if "corpora.slug" in str(error):
+                raise DuplicateCorpusSlugError(request.slug) from error
+            raise
         return self.get_corpus(corpus_id, user)
 
     def list_corpora(self, user: AuthenticatedUser) -> list[dict[str, object]]:
@@ -285,6 +298,41 @@ class CorpusStore:
     def get_corpus_record(self, corpus_id: str) -> dict[str, object]:
         with self.connection() as conn:
             return self._hydrate_corpus(conn, corpus_id, include_versions=True, include_jobs=True)
+
+    def delete_corpus(self, corpus_id: str, user: AuthenticatedUser) -> None:
+        workspace_roots: list[Path] = []
+        log_paths: list[Path] = []
+        with self.connection() as conn:
+            corpus = self._hydrate_corpus(conn, corpus_id, include_versions=True, include_jobs=True)
+            if not self._can_manage(conn, corpus_id, user):
+                raise PermissionError("Only the corpus owner or an admin can delete this corpus.")
+
+            active_jobs = [
+                item for item in corpus.get("jobs", [])
+                if item.get("status") in {"queued", "running"}
+            ]
+            if active_jobs:
+                raise ValueError("Cannot delete a corpus while sync or index jobs are still active.")
+
+            workspace_roots = [
+                Path(str(item["workspace_root"]))
+                for item in corpus.get("versions", [])
+                if item.get("workspace_root")
+            ]
+            log_paths = [
+                Path(str(item["logs_path"]))
+                for item in corpus.get("jobs", [])
+                if item.get("logs_path")
+            ]
+            conn.execute("DELETE FROM corpora WHERE id = ?", (corpus_id,))
+
+        for path in workspace_roots:
+            shutil.rmtree(path, ignore_errors=True)
+        shutil.rmtree(self.versions_root / corpus_id, ignore_errors=True)
+        for path in log_paths:
+            if path.exists():
+                path.unlink(missing_ok=True)
+        shutil.rmtree(self.logs_root / corpus_id, ignore_errors=True)
 
     def queue_sync_job(self, corpus_id: str, user: AuthenticatedUser) -> dict[str, object]:
         with self.connection() as conn:
@@ -808,6 +856,22 @@ class CorpusStore:
             if grant["principal_type"] == "group" and grant["principal_value"] in user_groups:
                 return True
         return False
+
+    def _can_manage(
+        self,
+        conn: sqlite3.Connection,
+        corpus_id: str,
+        user: AuthenticatedUser,
+    ) -> bool:
+        if user.is_admin:
+            return True
+        row = conn.execute(
+            "SELECT created_by FROM corpora WHERE id = ?",
+            (corpus_id,),
+        ).fetchone()
+        if row is None:
+            raise LookupError(corpus_id)
+        return bool(user.email and row["created_by"] == user.email)
 
     def _latest_version_id(self, conn: sqlite3.Connection, corpus_id: str) -> str | None:
         row = conn.execute(

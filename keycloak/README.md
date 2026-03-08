@@ -12,7 +12,10 @@ Realm settings:
 - Redirect URI: `https://openwebui.fake-domain.change.me/*`
 - Issuer: `https://openwebui-sso.fake-domain.change.me/realms/openwebui`
 
-The client secret in the realm export is intentionally set to `CHANGE_ME`. Replace it through Kubernetes secrets or environment variables before using real SSO flows.
+The client secret in the tracked local realm export is intentionally set to `CHANGE_ME`.
+
+- Local Docker Compose therefore uses `KEYCLOAK_CLIENT_SECRET_LOCAL=CHANGE_ME` by default for the Open WebUI OIDC callback flow.
+- Kubernetes can and should use a different `KEYCLOAK_CLIENT_SECRET` managed through secrets and rendered manifests.
 
 For Kubernetes, rotated realm user passwords are kept in the ignored local file
 `keycloak/realm-passwords.local.json`. The tracked realm JSON files keep the

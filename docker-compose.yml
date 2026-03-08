@@ -152,7 +152,7 @@ services:
       OAUTH_PROVIDER_NAME: Keycloak
       OPENID_PROVIDER_URL: http://host.docker.internal:${KEYCLOAK_PORT:-8082}/realms/openwebui/.well-known/openid-configuration
       OAUTH_CLIENT_ID: openwebui
-      OAUTH_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:-CHANGE_ME}
+      OAUTH_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET_LOCAL:-CHANGE_ME}
       OAUTH_SCOPES: openid profile email
       OPENAI_API_BASE_URL: http://pipelines:9099/v1
       OPENAI_API_KEY: ${PIPELINES_API_KEY:-CHANGE_ME}

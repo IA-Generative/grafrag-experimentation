@@ -8,6 +8,7 @@ from auth import AuthenticatedUser, get_corpus_manager_auth
 from config import get_settings
 from corpus_models import ActionResponse, CorpusDetail, CorpusManagerConfigResponse, CorpusSummary, CreateCorpusRequest, JobSummary, MeResponse
 from corpus_service import CorpusManagerService
+from corpus_store import DuplicateCorpusSlugError
 
 settings = get_settings()
 manager_auth = get_corpus_manager_auth()
@@ -56,6 +57,10 @@ def create_corpus(
 ) -> CorpusDetail:
     try:
         return service.create_corpus(request, user)
+    except DuplicateCorpusSlugError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
     except Exception as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
 
@@ -69,6 +74,21 @@ def get_corpus(
         return service.get_corpus(corpus_id, user)
     except LookupError as error:
         raise HTTPException(status_code=404, detail="Corpus not found.") from error
+
+
+@app.delete("/api/corpora/{corpus_id}", response_model=ActionResponse)
+def delete_corpus(
+    corpus_id: str,
+    user: AuthenticatedUser = Depends(manager_auth.require_user),
+) -> ActionResponse:
+    try:
+        return service.delete_corpus(corpus_id, user)
+    except LookupError as error:
+        raise HTTPException(status_code=404, detail="Corpus not found.") from error
+    except PermissionError as error:
+        raise HTTPException(status_code=403, detail=str(error)) from error
+    except ValueError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
 
 
 @app.post("/api/corpora/{corpus_id}/sync", response_model=ActionResponse)

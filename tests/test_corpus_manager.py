@@ -8,6 +8,7 @@ from auth import AuthenticatedUser
 from config import Settings
 from corpus_models import CreateCorpusRequest
 from corpus_service import CorpusManagerService
+from corpus_store import DuplicateCorpusSlugError
 from models import QueryRequest
 
 
@@ -158,3 +159,82 @@ def test_group_acl_allows_access_and_notifications(tmp_path: Path) -> None:
     notifications = service.notifications(operator)
     assert notifications
     assert notifications[0].corpus_id == corpus.id
+
+
+def test_duplicate_corpus_slug_raises_a_friendly_error(tmp_path: Path) -> None:
+    source_root = tmp_path / "source"
+    source_root.mkdir()
+    (source_root / "doc.md").write_text("# Test\nDuplicate slug coverage.", encoding="utf-8")
+
+    service = CorpusManagerService(build_settings(tmp_path))
+    admin = make_user("admin@test.local", roles=["admin"])
+
+    service.create_corpus(
+        CreateCorpusRequest(
+            slug="shared-slug",
+            name="First corpus",
+            source_kind="filesystem",
+            source_name="Local filesystem",
+            source_config={"path": str(source_root)},
+        ),
+        admin,
+    )
+
+    try:
+        service.create_corpus(
+            CreateCorpusRequest(
+                slug="shared-slug",
+                name="Second corpus",
+                source_kind="filesystem",
+                source_name="Local filesystem",
+                source_config={"path": str(source_root)},
+            ),
+            admin,
+        )
+    except DuplicateCorpusSlugError as error:
+        assert error.slug == "shared-slug"
+        assert "already exists" in str(error)
+    else:  # pragma: no cover - defensive assertion
+        raise AssertionError("Duplicate slugs must raise DuplicateCorpusSlugError.")
+
+
+def test_delete_corpus_removes_it_from_metadata_and_storage(tmp_path: Path) -> None:
+    source_root = tmp_path / "source"
+    source_root.mkdir()
+    (source_root / "doc.md").write_text("# Ops\nDelete corpus test.", encoding="utf-8")
+
+    service = CorpusManagerService(build_settings(tmp_path))
+    owner = make_user("owner@test.local")
+
+    corpus = service.create_corpus(
+        CreateCorpusRequest(
+            slug="delete-me",
+            name="Delete me",
+            source_kind="filesystem",
+            source_name="Local filesystem",
+            source_config={"path": str(source_root)},
+            allowed_users=["owner@test.local"],
+        ),
+        owner,
+    )
+    service.queue_sync(corpus.id, owner)
+    run_all_jobs(service)
+
+    corpus_dir = tmp_path / "corpus-data" / "corpora" / corpus.id
+    logs_dir = tmp_path / "corpus-data" / "logs" / corpus.id
+    assert corpus_dir.exists()
+    assert logs_dir.exists()
+
+    deleted = service.delete_corpus(corpus.id, owner)
+    assert deleted.status == "ok"
+
+    assert service.list_corpora(owner) == []
+    assert not corpus_dir.exists()
+    assert not logs_dir.exists()
+
+    try:
+        service.get_corpus(corpus.id, owner)
+    except LookupError:
+        pass
+    else:  # pragma: no cover - defensive assertion
+        raise AssertionError("Deleted corpus should no longer be retrievable.")

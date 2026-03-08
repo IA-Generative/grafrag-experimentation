@@ -54,6 +54,23 @@ Le système final doit permettre :
 
 --------------------------------------------------
 
+RETOURS D'EXPERIENCE A INTEGRER
+
+Le prompt doit aussi intégrer explicitement les enseignements pratiques suivants :
+
+- pour un MVP réaliste, un mode local sans SSO est acceptable via désactivation explicite de l'authentification sur le Corpus Manager et le viewer, mais ce chemin ne remplace pas le parcours complet Keycloak qui reste la référence
+- une sélection explicite du corpus dans Open WebUI via une syntaxe du type `[[corpus:<id>]]` est une solution acceptable et pragmatique pour le MVP
+- si un utilisateur n'a accès qu'à un seul corpus publié, une auto-sélection côté bridge peut être ajoutée, mais elle doit rester conservative et documentée
+- en cas d'accès refusé à un corpus, renvoyer `404` au lieu de révéler son existence est préférable
+- si l'intégration native des notifications Open WebUI via `channels` ou `chats` s'avère trop fragile ou disproportionnée pour le MVP, un fallback acceptable consiste à injecter des notifications synthétiques dans les réponses GraphRAG avec un lien profond vers `mycorpus`
+- dans ce cas, la documentation doit dire explicitement qu'il ne s'agit pas encore d'une intégration native Open WebUI
+- un connecteur HTTP contrôlé et un service `drive` mock local sont acceptables pour le développement et la démonstration, tant qu'ils sont présentés honnêtement comme une compatibilité de travail et non comme une validation complète de l'API officielle `suitenumerique/drive`
+- si les ACL par groupes sont prévues, les tokens Keycloak doivent réellement contenir les claims `groups`; ajouter les mappers côté realm fait partie du travail
+- si le realm de démonstration n'installe pas encore de groupes d'exemple ni d'affectations de groupes, cette limite doit être documentée
+- si les manifests Kubernetes sont templés, le chemin de déploiement documenté doit passer par le rendu des variables puis `kubectl apply`, pas par un `kubectl apply -k` brut sur les templates
+
+--------------------------------------------------
+
 EXIGENCE UX MAJEURE
 
 L'utilisateur cible n'est pas un développeur. C'est une personne métier qui doit :
@@ -344,6 +361,13 @@ Solution attendue à challenger puis implémenter :
 - inclure un lien profond vers l'interface `mycorpus`
 - prévoir une granularité par utilisateur, par groupe ou par corpus, selon ce qui est le plus cohérent
 
+Si cette intégration native n'est pas réellement livrable proprement dans le périmètre MVP, le prompt doit autoriser explicitement un repli pragmatique :
+
+- notifications synthétiques ajoutées aux réponses GraphRAG dans Open WebUI
+- lien profond vers `mycorpus`
+- interface `Corpus Manager` comme source de vérité détaillée
+- documentation honnête sur l'absence d'intégration native `channels` / `chats`
+
 Le prompt doit aussi imposer que :
 
 - la notification Open WebUI n'est pas le seul mécanisme de suivi
@@ -469,6 +493,7 @@ Le repository généré doit fonctionner :
 En local :
 
 - la stack doit être testable sans infrastructure externe lourde
+- un chemin de test rapide sans SSO complet est acceptable pour les validations développeur, à condition qu'il soit explicitement séparé du chemin de référence avec Keycloak
 - un mode mock ou une source locale substituable au connecteur Drive est acceptable pour les tests si le vrai connecteur n'est pas trivialement testable
 - mais le prompt doit aussi demander un vrai chemin de test avec `drive` lui-même, pas uniquement un mock
 - ce chemin local doit permettre soit un lancement simple en conteneurs, soit un déploiement Kubernetes local avec un ou plusieurs pods `drive`
@@ -520,6 +545,12 @@ Le suivi doit être visible :
 - et sous forme de notification synthétique dans Open WebUI
 
 Une simple consultation de logs bruts ne suffit pas.
+
+Le prompt doit aussi accepter qu'au stade MVP la notification Open WebUI prenne la forme d'un encart ou d'un bloc de notices dans la réponse du pipeline GraphRAG, tant que :
+
+- le message est utile pour l'utilisateur
+- il pointe vers `mycorpus`
+- il n'induit pas en erreur sur son niveau d'intégration réel
 
 --------------------------------------------------
 

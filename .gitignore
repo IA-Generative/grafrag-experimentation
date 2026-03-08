@@ -21,6 +21,8 @@ __pycache__/
 *.log
 reports/
 rendered/
+benchmarks/artifacts/
+graphrag/benchmarks/workspaces/
 k8s/rendered/
 openwebui/data/
 corpus-data/

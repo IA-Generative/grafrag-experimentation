@@ -108,6 +108,14 @@ The graph viewer works at this stage in `document-map fallback` mode, built dire
 
 The multi-corpus MVP stores its runtime state under [`corpus-data`](./corpus-data), which is intentionally ignored by Git. That directory contains the metadata SQLite database, per-corpus version workspaces, and worker log files.
 
+For fast local iteration, you can temporarily disable browser auth on the new multi-corpus surfaces:
+
+```bash
+CORPUS_MANAGER_AUTH_REQUIRED=false GRAPH_VIEWER_AUTH_REQUIRED=false docker compose up -d --build bridge corpus-manager corpus-worker drive
+```
+
+This shortcut is only for local development and automated smoke tests. The reference behavior remains the Keycloak-protected path.
+
 Local Docker now also starts these extra services by default:
 
 - `corpus-manager` on port `8084`
@@ -128,6 +136,15 @@ Open WebUI keeps the same two GraphRAG models. In multi-corpus mode, pick the co
 ```
 
 The bridge then enforces corpus-level access control before querying the published version. The current Open WebUI integration surfaces indexing notices as synthetic messages added to GraphRAG responses, with deep links back to the Corpus Manager. It does not yet create native Open WebUI channels automatically.
+
+Current multi-corpus scope and limits:
+
+- corpus selection in Open WebUI uses the explicit `[[corpus:<id>]]` prefix
+- when a user has access to exactly one published corpus, the bridge can auto-select it
+- unauthorized access to a corpus returns `404` to avoid leaking corpus existence
+- Keycloak `groups` claims are wired through client mappers, but the shipped demo realm does not yet preseed example groups or group assignments
+- the local `drive` service is a controlled HTTP mock used for development and demos, not a claim of validated official `suitenumerique/drive` API compatibility
+- the current metadata store is SQLite, which is pragmatic for local development and a single shared PVC in Kubernetes, but not a claim of fully horizontally scalable metadata coordination
 
 5. Optionally index the sample corpus when you want the full GraphRAG entity/relationship graph plus `graphrag query`:
 
@@ -240,6 +257,7 @@ Important for local access from your Mac:
 - `keycloak:8080` is only a Docker-internal hostname
 - from the browser, use `http://localhost:8082`
 - Open WebUI is configured to fetch OIDC metadata through `host.docker.internal:8082` so browser redirects stay host-accessible in local development
+- local Docker Compose intentionally uses `KEYCLOAK_CLIENT_SECRET_LOCAL` for Open WebUI instead of the cluster-oriented `KEYCLOAK_CLIENT_SECRET`, so a rotated Scaleway secret does not break the local OIDC flow
 - local Keycloak test users are allowed to create their Open WebUI account through OIDC because `ENABLE_OAUTH_SIGNUP=true`
 - newly created OIDC users are activated directly as regular Open WebUI users because `DEFAULT_USER_ROLE=user`
 - when the same Keycloak e-mail logs in from another browser or session, `OAUTH_MERGE_ACCOUNTS_BY_EMAIL=true` must be enabled so Open WebUI links the OAuth identity to the existing account instead of trying to create a duplicate user
@@ -267,6 +285,8 @@ Deploy the full stack:
 ```
 
 The script renders manifests from [`k8s/base`](./k8s/base), creates secrets, imports the Keycloak realm, generates the pipelines ConfigMap directly from the local [`pipelines`](./pipelines) directory, waits for readiness, then launches smoke and integration checks.
+
+Use that rendered deployment path as the source of truth. The files under [`k8s/base`](./k8s/base) are templates, so a raw `kubectl apply -k k8s/base` is not the intended operational path for this repository.
 
 By default, the Kubernetes deploy no longer blocks on `job/graphrag-index`. `mygraph` is expected to stay usable through the document-map fallback, so the GraphRAG indexing job is now opt-in:
 
@@ -408,6 +428,50 @@ The repository now infers `OPENAI_EMBEDDING_VECTOR_SIZE` from the embedding mode
 The bridge and deployment scripts keep compatibility with legacy `OPENAI_*` environment variables, but `SCW_*` is now the primary configuration surface for this repository.
 
 Open WebUI itself still points to the `pipelines` service. The general-purpose Scaleway chat models are therefore exposed through a dedicated pipeline manifold instead of a second direct provider configuration inside Open WebUI. This keeps the architecture coherent: Open WebUI always talks to one OpenAI-compatible endpoint, while the `pipelines` layer decides whether a request goes to GraphRAG or to a direct Scaleway chat model.
+
+## Indexing Benchmark
+
+For reproducible local GraphRAG indexing benchmarks, this repository now ships two dedicated settings profiles:
+
+- [`graphrag/settings.baseline.yaml`](./graphrag/settings.baseline.yaml)
+- [`graphrag/settings.optimized.yaml`](./graphrag/settings.optimized.yaml)
+
+The benchmark runner uses the existing local `bridge` container by default, isolates each run in a dedicated GraphRAG workspace, and generates:
+
+- [`benchmarks/results.json`](./benchmarks/results.json)
+- [`benchmarks/summary.md`](./benchmarks/summary.md)
+
+Cold runs are executed with an empty GraphRAG cache. The optional warm run reuses the optimized cache while rebuilding output artifacts, so it measures rerun acceleration rather than first-run latency.
+
+Required environment surface for split Scaleway deployments:
+
+- `SCW_API_KEY`
+- `SCW_CHAT_BASE_URL`
+- `SCW_EMBEDDING_BASE_URL`
+- `SCW_CHAT_MODEL`
+- `SCW_EMBEDDING_MODEL`
+
+Optional benchmark-specific overrides:
+
+- `SCW_BASELINE_CHAT_MODEL`
+- `SCW_BASELINE_EMBEDDING_MODEL`
+- `SCW_OPTIMIZED_CHAT_MODEL`
+- `SCW_OPTIMIZED_EMBEDDING_MODEL`
+- `BENCHMARK_BRIDGE_CONTAINER`
+
+Run the default local benchmark with:
+
+```bash
+python3 scripts/benchmark_indexing.py
+```
+
+To explore the more aggressive `fast` path explicitly:
+
+```bash
+python3 scripts/benchmark_indexing.py --optimized-method fast
+```
+
+The default benchmark keeps the optimized profile on `standard` to preserve GraphRAG extraction quality more closely on this French corpus. Switching to `fast` is expected to cut indexing time further, but it will usually produce a noisier and less semantically rich graph.
 
 ## Secrets
 

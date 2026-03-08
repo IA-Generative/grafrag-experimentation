@@ -59,6 +59,10 @@ class CorpusManagerService:
     def create_corpus(self, request: CreateCorpusRequest, user: AuthenticatedUser) -> CorpusDetail:
         return self._detail_model(self.store.create_corpus(request, user))
 
+    def delete_corpus(self, corpus_id: str, user: AuthenticatedUser) -> ActionResponse:
+        self.store.delete_corpus(corpus_id, user)
+        return ActionResponse(status="ok", details="Corpus deleted.")
+
     def queue_sync(self, corpus_id: str, user: AuthenticatedUser) -> ActionResponse:
         job = self._job_model(self.store.queue_sync_job(corpus_id, user))
         return ActionResponse(status="queued", details="Synchronization queued.", job=job)
