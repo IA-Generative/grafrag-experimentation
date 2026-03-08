@@ -123,9 +123,11 @@ This keeps the three workloads on the same node and avoids `Multi-Attach error` 
 
 The bridge must keep interactive chat responsive. In practice, this repository now applies a bounded request budget:
 
-- `graphrag query` gets a shorter internal timeout
+- `graphrag query` gets a method-aware internal timeout: `local` stays short, while `global` gets a larger budget because it is materially slower on real corpora
 - fallback LLM synthesis gets its own shorter timeout
 - if the remaining request budget is too low, the bridge returns a deterministic fallback answer instead of hanging
+
+The default local settings are now tuned around `REQUEST_TIMEOUT_SECONDS=120`, `GRAPHRAG_CLI_TIMEOUT_SECONDS=30`, `GRAPHRAG_GLOBAL_CLI_TIMEOUT_SECONDS=90`, and `LLM_TIMEOUT_SECONDS=20`.
 
 Open WebUI can also invoke the same pipeline for internal helper prompts such as follow-up question generation. Those prompts should not be sent through GraphRAG retrieval. The local pipeline therefore short-circuits known follow-up-generation prompts and returns lightweight JSON directly.
 
@@ -300,6 +302,18 @@ The viewer also includes a synthesis workflow aimed at people who need to build 
 - fragments can be retained without reusing the source-group fill colors already used by the legend
 - a `Synthèse en cours` basket keeps the retained excerpts and their sources visible
 - the export area can download either the selected fragments or a Markdown prompt ready to replay in another LLM
+
+## Viewer Examples
+
+The screenshots below show the current graph viewer with the left-side controls, the interactive graph canvas, and the right-side detail/synthesis panel.
+
+Selected node view with document details and retained excerpts:
+
+![Graph viewer with a selected node, detail panel, and synthesis excerpts](<images/Capture d’écran 2026-03-08 à 20.58.56.png>)
+
+Compact exploration view with the reading mode selector opened:
+
+![Graph viewer in compact mode with the reading mode selector opened](<images/Capture d’écran 2026-03-08 à 20.59.18.png>)
 
 Brand assets for the viewer live in [`bridge/assets`](./bridge/assets). The master image is [`bridge/assets/mirai-graphrag.png`](./bridge/assets/mirai-graphrag.png); regenerate the reduced PNGs, favicon, Apple touch icon, Android icons, and the dedicated Open WebUI model avatar (`mirai-model-avatar-128.png`) with `python3 scripts/generate_brand_assets.py`.
 

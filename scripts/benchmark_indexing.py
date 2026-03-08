@@ -118,6 +118,17 @@ OPTIMIZED_PROFILES = {
             "Expect fewer organization nodes and a more corpus-specific graph."
         ),
     ),
+    "v6": OptimizedProfileSpec(
+        name="v6",
+        settings_file="settings.optimized.v6.yaml",
+        chunk_size=2200,
+        chunk_overlap=64,
+        quality_note=(
+            "Profile intended for the fast indexing path, keeping the broader v2/v4 entity scope while tightening "
+            "community report budgets. Expect materially lower graph fidelity than standard runs, but a better shot "
+            "at controlling both extract_graph and community_reports cold latency."
+        ),
+    ),
 }
 
 
