@@ -5,6 +5,7 @@ __pycache__/
 .DS_Store
 
 graphrag/cache/
+graphrag/benchmarks/
 graphrag/output/
 openwebui/data/
 reports/

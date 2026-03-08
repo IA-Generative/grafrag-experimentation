@@ -15,6 +15,7 @@ spec:
       labels:
         app: pipelines
     spec:
+      enableServiceLinks: false
       initContainers:
         - name: copy-pipelines
           image: docker.io/library/busybox:1.36

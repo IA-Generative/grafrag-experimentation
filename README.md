@@ -31,6 +31,84 @@ flowchart TD
     B --> C[(Local Corpus)]
 ```
 
+## Shared Open WebUI Topology
+
+When this repository and the sibling `../anef-knowledge-assistant` repository target the same Open WebUI instance, the runtime is intentionally split across two codebases: `grafrag-experimentation` owns the GraphRAG stack and the shared Open WebUI base, while `anef-knowledge-assistant` adds the ANEF API, ANEF-specific Open WebUI models, and a small browser-side overlay injected through `loader.js`.
+
+```mermaid
+flowchart LR
+    U[User browser] --> OWF[Open WebUI frontend]
+    OWF --> OWB[Open WebUI backend]
+    OWB --> P[pipelines service]
+    OWB --> WDB[(webui.db aliases and grants)]
+    OWB --> SX[SearXNG]
+    OWF -. browser OIDC .-> KC[Keycloak]
+
+    subgraph G[grafrag-experimentation]
+        BR[GraphRAG bridge]
+        CM[Corpus Manager API]
+        CW[corpus-worker]
+        WS[(Versioned GraphRAG workspaces)]
+        SRC[drive or external file sources]
+        GM[GraphRAG and general model reprovisioning]
+    end
+
+    subgraph A[anef-knowledge-assistant]
+        AP[ANEF API]
+        AR[ANEF regulatory pipeline]
+        AM[ANEF Open WebUI integration scripts]
+        LCM[[ConfigMap anef-openwebui-loader]]
+        LJ[loader.js CESEDA overlay]
+    end
+
+    subgraph X[Shared external services]
+        LLM[OpenAI-compatible LLM endpoint]
+    end
+
+    P --> BR
+    P --> AR
+    BR --> WS
+    BR --> CM
+    CM --> CW
+    CW --> SRC
+    BR --> LLM
+
+    GM -.->|writes GraphRAG and general aliases| WDB
+    AM -.->|writes ANEF aliases and grants| WDB
+    AM -.->|patches Open WebUI deployment| LCM
+    LCM -.->|mounts loader.js into build static| OWB
+    OWF -->|loads static loader.js| LJ
+    LJ -->|preview and modal calls| AP
+    OWF -->|graph links| BR
+```
+
+The shared redeploy entrypoint in this repository, [`scripts/redeploy_openwebui_stack.sh`](./scripts/redeploy_openwebui_stack.sh), is only a thin wrapper. It exports `GRAFRAG_ROOT` and delegates the real orchestration to `../anef-knowledge-assistant/scripts/redeploy_openwebui_stack.sh`, which reconciles both repositories against the same Open WebUI deployment.
+
+That shared orchestration now performs the full recovery path in one run:
+
+- redeploy the GraphRAG stack and its dependencies
+- reprovision GraphRAG, general-purpose, and ANEF model aliases in Open WebUI with public read grants
+- reapply the ANEF `loader.js` overlay through the persistent `anef-openwebui-loader` `ConfigMap`
+- reprovision GraphRAG and general-purpose model aliases again after the ANEF integration step if Open WebUI rolls and `webui.db` is recreated
+- wait for the ANEF API to become functionally reachable from Open WebUI before the final ANEF smoke test
+- run end-to-end validation across GraphRAG, Open WebUI, and ANEF pipelines
+
+The `loader.js` override is intentionally lightweight. It is not a fork of the Open WebUI frontend bundle. Instead, `anef-knowledge-assistant` ships a small overlay script (`deploy/openwebui/anef_ceseda_link_overlay.js`) that augments the browser UI after the page loads:
+
+- in local Docker, the ANEF integration script copies the file directly into the `openwebui` container static path and restarts the relevant services
+- in Kubernetes, `manage_openwebui_k8s_integration.py` creates or updates the `anef-openwebui-loader` `ConfigMap`, mounts it into `Deployment/openwebui` at `/app/build/static/loader.js`, and stamps the pod template with `anef.mirai/loader-checksum` so any loader change forces a clean rollout
+- Open WebUI startup then mirrors that static asset into `/app/backend/open_webui/static`, which is why the browser keeps receiving the ANEF overlay after pod recreation
+- at runtime, the overlay intercepts CESEDA links in chat responses, calls `/legal/articles/{article_id}/preview` on hover, calls `/legal/articles/{article_id}/view` on click, and renders the result as a compact preview or modal without requiring a heavy custom Open WebUI fork
+
+This persistence model is intentionally different from Open WebUI model aliases. In Kubernetes, the current deployment still stores [`openwebui/data/webui.db`](./openwebui/data/webui.db) on an `emptyDir`, so aliases and grants are replayable but not persistent across pod recreation. The `loader.js` overlay, by contrast, is persisted declaratively through a `ConfigMap` plus a deployment patch.
+
+The same Kubernetes deployment also has a storage constraint to respect: `bridge`, `corpus-manager`, and `corpus-worker` share the `corpus-manager-data` PVC, which is currently provisioned as `ReadWriteOnce`. The manifests therefore now combine:
+
+- `strategy.type: Recreate` on the deployments that own that shared state
+- required `podAffinity` for `bridge` and `corpus-worker` toward `corpus-manager` on `kubernetes.io/hostname`
+
+This keeps the three workloads on the same node and avoids `Multi-Attach error` rollouts on Scaleway block volumes.
+
 ## Request Flow
 
 1. A user submits a prompt in Open WebUI.
@@ -236,6 +314,18 @@ using:
 python3 scripts/provision_openwebui_model_aliases.py
 ```
 
+For the Kubernetes deployment, the operational reprovision path is now:
+
+```bash
+python3 ../anef-knowledge-assistant/scripts/manage_grafrag_openwebui_k8s_models.py register --namespace grafrag --grafrag-root .
+```
+
+or, when both repositories must be reconciled in one pass:
+
+```bash
+bash scripts/redeploy_openwebui_stack.sh
+```
+
 The script deprovisions previous overrides, then recreates them in [`openwebui/data/webui.db`](./openwebui/data/webui.db) with:
 
 - names `MirAI GraphRAG Local` and `MirAI GraphRAG Global`
@@ -243,7 +333,11 @@ The script deprovisions previous overrides, then recreates them in [`openwebui/d
 - a `profile_image_url` pointing to `${BRIDGE_PUBLIC_URL}/assets/mirai-model-avatar-128.png`
 - short descriptive metadata and tags
 
-In local Docker, those overrides persist because [`openwebui/data`](./openwebui/data) is bind-mounted from the repository. In the current Kubernetes manifests, Open WebUI stores `/app/backend/data` on an `emptyDir`, so model overrides, MirAI avatars, and similar admin-side state disappear on pod recreation unless you either switch that mount to a PVC or rerun `python3 scripts/provision_openwebui_model_aliases.py` after each rollout. The current [`deploy/deploy-k8s.sh`](./deploy/deploy-k8s.sh) does not invoke that reprovisioning step automatically.
+In local Docker, those overrides persist because [`openwebui/data`](./openwebui/data) is bind-mounted from the repository. In the current Kubernetes manifests, Open WebUI stores `/app/backend/data` on an `emptyDir`, so model overrides, MirAI avatars, and similar admin-side state disappear on pod recreation unless you either switch that mount to a PVC or rerun the Kubernetes reprovisioning step after each rollout. The shared script [`scripts/redeploy_openwebui_stack.sh`](./scripts/redeploy_openwebui_stack.sh) now does that reprovisioning automatically for both the GraphRAG/general aliases and the ANEF aliases. The ANEF `loader.js` overlay itself is no longer volatile because it is mounted by `ConfigMap`.
+
+The Kubernetes deploy path now also disables automatic service-link environment injection on the main application pods (`enableServiceLinks: false`). This avoids collisions such as `BRIDGE_PORT=tcp://...` being injected by Kubernetes and then parsed as an application integer setting.
+
+`deploy/deploy-k8s.sh` now exposes `DEPLOYMENT_WAIT_TIMEOUT_SECONDS` and defaults it to `600`, which is more realistic than the earlier `240` on this cluster when multiple pods need to pull fresh images and run init containers.
 
 In the default local configuration, Open WebUI hides the native login form and only exposes the Keycloak OIDC button. Start the optional SSO profile before using that button:
 
@@ -284,9 +378,36 @@ Deploy the full stack:
 ./deploy/deploy-k8s.sh
 ```
 
+When `grafrag-experimentation` and `anef-knowledge-assistant` are checked out side by side and must converge to the same Open WebUI instance, use the shared full redeploy path instead:
+
+```bash
+bash scripts/redeploy_openwebui_stack.sh
+```
+
+That wrapper delegates to the orchestration script maintained in the sibling `anef-knowledge-assistant` repository. The combined flow:
+
+- redeploys the full grafrag stack and its dependencies
+- reprovisions the GraphRAG and general-purpose MirAI model aliases in Open WebUI with public read grants
+- builds and redeploys `anef-pj-knowledge-assistant` into the same namespace
+- reinjects the ANEF models plus the persistent `loader.js` served through a Kubernetes `ConfigMap`
+- executes final GraphRAG, Open WebUI, and ANEF checks
+
+That shared path also forces `DOCKER_BUILD_OUTPUT=push` for the `grafrag-bridge` image so the bridge build goes straight to the registry instead of consuming local Docker disk with an intermediate `--load`.
+It also forces a fresh `IMAGE_TAG` by default, so Kubernetes does not keep reusing an older `grafrag-bridge` image under `IfNotPresent`.
+
 The script renders manifests from [`k8s/base`](./k8s/base), creates secrets, imports the Keycloak realm, generates the pipelines ConfigMap directly from the local [`pipelines`](./pipelines) directory, waits for readiness, then launches smoke and integration checks.
 
 Use that rendered deployment path as the source of truth. The files under [`k8s/base`](./k8s/base) are templates, so a raw `kubectl apply -k k8s/base` is not the intended operational path for this repository.
+
+When you need the same optimization outside the shared wrapper, set:
+
+```bash
+DOCKER_BUILD_OUTPUT=push ./deploy/deploy-k8s.sh
+```
+
+That mode is better suited to the large `grafrag-bridge` image on developer workstations where local Docker disk is the limiting factor.
+
+If your `.env` only defines `BASE_DOMAIN` plus the main public hosts, `deploy/prepare-k8s-env.sh` now derives a sane default `CORPUS_MANAGER_HOST=corpus.${BASE_DOMAIN}` and `CORPUS_MANAGER_TLS_SECRET_NAME=corpus-manager-tls` so the Kubernetes render path stays operational.
 
 By default, the Kubernetes deploy no longer blocks on `job/graphrag-index`. `mygraph` is expected to stay usable through the document-map fallback, so the GraphRAG indexing job is now opt-in:
 
@@ -372,7 +493,7 @@ Set these variables when you want the Kubernetes cache sync enabled:
 - Keep the corpus metadata and version workspaces on their dedicated PVC. The asynchronous worker and the bridge both depend on the same published corpus directories.
 - Keycloak behind the ingress must advertise the public hostname and trust forwarded headers (`--hostname=${KEYCLOAK_HOST}` plus `--proxy-headers=xforwarded`), otherwise OIDC redirects and issuer metadata break externally.
 - The current SearXNG profile intentionally excludes DuckDuckGo because it triggered repeated CAPTCHA failures in this deployment. The in-cluster backend also runs with `server.limiter: false` to avoid `429` on Open WebUI backend calls that do not look like browser traffic.
-- MirAI model logos inside Open WebUI are not automatic on the current Scaleway rollout. They live in Open WebUI model overrides stored in `webui.db`, and the current Kubernetes deployment keeps `/app/backend/data` on `emptyDir`. Without a PVC or a post-deploy reprovision step, those avatars disappear after a rollout.
+- MirAI model logos and aliases inside Open WebUI still live in `webui.db`, and the current Kubernetes deployment keeps `/app/backend/data` on `emptyDir`. Without a PVC or a post-deploy reprovision step, those aliases disappear after a rollout. Use [`scripts/redeploy_openwebui_stack.sh`](./scripts/redeploy_openwebui_stack.sh) for the full shared redeploy or rerun the dedicated Kubernetes reprovision command for GraphRAG/general models plus the ANEF integration script.
 - Keep rotated Keycloak realm passwords outside Git-tracked realm files. Use the ignored local file `keycloak/realm-passwords.local.json` and render it into Kubernetes at deploy time.
 - Keep manifest rendering on an explicit `envsubst` allowlist. Blindly substituting every `${...}` placeholder in generated configs caused accidental replacements in unrelated config blocks.
 
@@ -431,7 +552,7 @@ Open WebUI itself still points to the `pipelines` service. The general-purpose S
 
 ## Indexing Benchmark
 
-For reproducible local GraphRAG indexing benchmarks, this repository now ships three versioned settings profiles:
+For reproducible local GraphRAG indexing benchmarks, this repository now ships versioned settings profiles:
 
 - [`graphrag/settings.baseline.yaml`](./graphrag/settings.baseline.yaml)
 - [`graphrag/settings.optimized.yaml`](./graphrag/settings.optimized.yaml)
@@ -439,6 +560,7 @@ For reproducible local GraphRAG indexing benchmarks, this repository now ships t
 - [`graphrag/settings.optimized.v3.yaml`](./graphrag/settings.optimized.v3.yaml)
 - [`graphrag/settings.optimized.v4.yaml`](./graphrag/settings.optimized.v4.yaml)
 - [`graphrag/settings.optimized.v5.yaml`](./graphrag/settings.optimized.v5.yaml)
+- [`graphrag/settings.optimized.v6.yaml`](./graphrag/settings.optimized.v6.yaml)
 
 The benchmark runner uses the existing local `bridge` container by default, isolates each run in a dedicated GraphRAG workspace, and generates:
 
@@ -446,6 +568,15 @@ The benchmark runner uses the existing local `bridge` container by default, isol
 - [`benchmarks/summary.md`](./benchmarks/summary.md)
 
 Cold runs are executed with an empty GraphRAG cache. The optional warm run reuses the optimized cache while rebuilding output artifacts, so it measures rerun acceleration rather than first-run latency.
+
+Current benchmark takeaway on the local French corpus:
+
+- `v2` is the recommended default profile. It remains the best measured `cold` run at `1189.072s`, which makes it the best choice for first-time indexing and the safest operational default.
+- `v4` is the closest alternative to `v2`. It is slightly slower in `cold` (`1208.441s`) but remains a reasonable option when you want a profile that stays close to the `standard` method while improving warm reruns.
+- `v5` produced the best measured `warm` rerun (`228.716s`) but regressed too hard in `cold` (`1977.432s`), so it should not replace `v2` as the main profile.
+- `v6` tested the `fast` method with tighter community-report budgets. It reduced extraction cost, but it also produced a much denser graph and made `community_reports` explode in `cold` (`2691.599s`), so it is kept as an exploratory benchmark, not an operational default.
+
+In practice: optimize for `cold` unless you mostly rerun the exact same corpus with a warm cache already populated. The versioned summaries under [`benchmarks`](./benchmarks) are the source of truth for these comparisons.
 
 Required environment surface for split Scaleway deployments:
 
@@ -491,6 +622,12 @@ To test the extract-graph-focused v5 profile:
 
 ```bash
 python3 scripts/benchmark_indexing.py --optimized-profile v5
+```
+
+To test the fast/community-report-focused v6 profile:
+
+```bash
+python3 scripts/benchmark_indexing.py --optimized-profile v6 --optimized-method fast
 ```
 
 To explore the more aggressive `fast` path explicitly:

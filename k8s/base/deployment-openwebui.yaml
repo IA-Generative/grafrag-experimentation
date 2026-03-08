@@ -13,6 +13,7 @@ spec:
       labels:
         app: openwebui
     spec:
+      enableServiceLinks: false
       containers:
         - name: openwebui
           image: ${OPENWEBUI_IMAGE}

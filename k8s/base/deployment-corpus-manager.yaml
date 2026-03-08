@@ -4,6 +4,8 @@ metadata:
   name: corpus-manager
   namespace: ${NAMESPACE}
 spec:
+  strategy:
+    type: Recreate
   replicas: 1
   selector:
     matchLabels:
@@ -13,6 +15,7 @@ spec:
       labels:
         app: corpus-manager
     spec:
+      enableServiceLinks: false
       imagePullSecrets:
         - name: grafrag-registry
       containers:

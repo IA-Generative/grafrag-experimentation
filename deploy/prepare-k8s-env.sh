@@ -19,6 +19,20 @@ export GRAPHRAG_INDEX_TIMEOUT_SECONDS
 : "${RUN_GRAPHRAG_INDEX_JOB:=false}"
 export RUN_GRAPHRAG_INDEX_JOB
 
+: "${CORPUS_MANAGER_CLIENT_ID:=corpus-manager}"
+export CORPUS_MANAGER_CLIENT_ID
+
+: "${CORPUS_MANAGER_AUTH_REQUIRED:=true}"
+export CORPUS_MANAGER_AUTH_REQUIRED
+
+if [[ -z "${CORPUS_MANAGER_HOST:-}" && -n "${BASE_DOMAIN:-}" ]]; then
+  CORPUS_MANAGER_HOST="corpus.${BASE_DOMAIN}"
+fi
+export CORPUS_MANAGER_HOST
+
+: "${CORPUS_MANAGER_TLS_SECRET_NAME:=corpus-manager-tls}"
+export CORPUS_MANAGER_TLS_SECRET_NAME
+
 if [[ -z "${OPENAI_EMBEDDING_VECTOR_SIZE:-}" ]]; then
   case "${OPENAI_EMBEDDING_MODEL:-bge-multilingual-gemma2}" in
     qwen3-embedding-8b)

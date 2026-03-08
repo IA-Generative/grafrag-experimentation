@@ -13,6 +13,7 @@ spec:
       labels:
         app: drive
     spec:
+      enableServiceLinks: false
       imagePullSecrets:
         - name: grafrag-registry
       containers:

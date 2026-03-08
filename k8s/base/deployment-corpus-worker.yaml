@@ -4,6 +4,8 @@ metadata:
   name: corpus-worker
   namespace: ${NAMESPACE}
 spec:
+  strategy:
+    type: Recreate
   replicas: 1
   selector:
     matchLabels:
@@ -13,6 +15,14 @@ spec:
       labels:
         app: corpus-worker
     spec:
+      enableServiceLinks: false
+      affinity:
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app: corpus-manager
+              topologyKey: kubernetes.io/hostname
       imagePullSecrets:
         - name: grafrag-registry
       containers:

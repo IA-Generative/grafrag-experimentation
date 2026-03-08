@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
-./deploy/prepare-k8s-env.sh
+source "${ROOT_DIR}/deploy/prepare-k8s-env.sh"
 
 source "${ROOT_DIR}/scripts/load_env.sh"
 load_dotenv_preserve_existing "${ROOT_DIR}/.env"
@@ -14,6 +14,8 @@ sync_llm_env_aliases
 export GRAPHRAG_INDEX_TIMEOUT_SECONDS
 : "${RUN_GRAPHRAG_INDEX_JOB:=false}"
 export RUN_GRAPHRAG_INDEX_JOB
+: "${DEPLOYMENT_WAIT_TIMEOUT_SECONDS:=600}"
+export DEPLOYMENT_WAIT_TIMEOUT_SECONDS
 
 for dependency in kubectl docker envsubst curl; do
   if ! command -v "$dependency" >/dev/null 2>&1; then
@@ -68,11 +70,11 @@ kubectl -n "$NAMESPACE" create configmap keycloak-realm \
   --from-file=realm-openwebui.json=k8s/rendered/realm-openwebui.json \
   --dry-run=client -o yaml | kubectl apply -f -
 
-kubectl apply -f k8s/rendered/deployment-bridge.yaml
-kubectl apply -f k8s/rendered/service-bridge.yaml
 kubectl apply -f k8s/rendered/deployment-corpus-manager.yaml
 kubectl apply -f k8s/rendered/service-corpus-manager.yaml
 kubectl apply -f k8s/rendered/deployment-corpus-worker.yaml
+kubectl apply -f k8s/rendered/deployment-bridge.yaml
+kubectl apply -f k8s/rendered/service-bridge.yaml
 kubectl apply -f k8s/rendered/deployment-drive.yaml
 kubectl apply -f k8s/rendered/service-drive.yaml
 kubectl apply -f k8s/rendered/deployment-pipelines.yaml
@@ -93,15 +95,15 @@ if [[ -n "${SEARXNG_HOST:-}" ]]; then
   kubectl apply -f k8s/rendered/ingress-searxng.yaml
 fi
 
-kubectl -n "$NAMESPACE" wait --for=condition=available deployment/bridge --timeout=240s
-kubectl -n "$NAMESPACE" wait --for=condition=available deployment/corpus-manager --timeout=240s
-kubectl -n "$NAMESPACE" wait --for=condition=available deployment/corpus-worker --timeout=240s
-kubectl -n "$NAMESPACE" wait --for=condition=available deployment/drive --timeout=240s
-kubectl -n "$NAMESPACE" wait --for=condition=available deployment/pipelines --timeout=240s
-kubectl -n "$NAMESPACE" wait --for=condition=available deployment/openwebui --timeout=240s
-kubectl -n "$NAMESPACE" wait --for=condition=available deployment/keycloak --timeout=240s
-kubectl -n "$NAMESPACE" wait --for=condition=available deployment/searxng --timeout=240s
-kubectl -n "$NAMESPACE" wait --for=condition=available deployment/search-valkey --timeout=240s
+kubectl -n "$NAMESPACE" wait --for=condition=available deployment/corpus-manager --timeout="${DEPLOYMENT_WAIT_TIMEOUT_SECONDS}s"
+kubectl -n "$NAMESPACE" wait --for=condition=available deployment/corpus-worker --timeout="${DEPLOYMENT_WAIT_TIMEOUT_SECONDS}s"
+kubectl -n "$NAMESPACE" wait --for=condition=available deployment/bridge --timeout="${DEPLOYMENT_WAIT_TIMEOUT_SECONDS}s"
+kubectl -n "$NAMESPACE" wait --for=condition=available deployment/drive --timeout="${DEPLOYMENT_WAIT_TIMEOUT_SECONDS}s"
+kubectl -n "$NAMESPACE" wait --for=condition=available deployment/pipelines --timeout="${DEPLOYMENT_WAIT_TIMEOUT_SECONDS}s"
+kubectl -n "$NAMESPACE" wait --for=condition=available deployment/openwebui --timeout="${DEPLOYMENT_WAIT_TIMEOUT_SECONDS}s"
+kubectl -n "$NAMESPACE" wait --for=condition=available deployment/keycloak --timeout="${DEPLOYMENT_WAIT_TIMEOUT_SECONDS}s"
+kubectl -n "$NAMESPACE" wait --for=condition=available deployment/searxng --timeout="${DEPLOYMENT_WAIT_TIMEOUT_SECONDS}s"
+kubectl -n "$NAMESPACE" wait --for=condition=available deployment/search-valkey --timeout="${DEPLOYMENT_WAIT_TIMEOUT_SECONDS}s"
 
 if [[ "${RUN_GRAPHRAG_INDEX_JOB}" == "true" ]]; then
   kubectl -n "$NAMESPACE" delete job graphrag-index --ignore-not-found
@@ -122,7 +124,21 @@ cleanup() {
 }
 trap cleanup EXIT
 
-sleep 5
+wait_for_http() {
+  local url="$1"
+  local timeout_seconds="${2:-120}"
+  local deadline=$((SECONDS + timeout_seconds))
+  until curl -fsS -L "$url" >/dev/null 2>&1; do
+    if (( SECONDS >= deadline )); then
+      echo "Timed out waiting for ${url}" >&2
+      return 1
+    fi
+    sleep 2
+  done
+}
+
+wait_for_http "http://127.0.0.1:18081/healthz" 120
+wait_for_http "http://127.0.0.1:13000" 120
 
 BRIDGE_BASE_URL=http://127.0.0.1:18081 OPENWEBUI_BASE_URL=http://127.0.0.1:13000 ./smoke-tests.sh
 BRIDGE_BASE_URL=http://127.0.0.1:18081 OPENWEBUI_BASE_URL=http://127.0.0.1:13000 ./integration-tests.sh
