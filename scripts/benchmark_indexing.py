@@ -50,7 +50,42 @@ class RunSpec:
     embedding_model: str
     quality_note: str
     clear_cache: bool
+    chunk_size: int
+    chunk_overlap: int
     reuse_workspace: bool = False
+
+
+@dataclass(frozen=True)
+class OptimizedProfileSpec:
+    name: str
+    settings_file: str
+    chunk_size: int
+    chunk_overlap: int
+    quality_note: str
+
+
+OPTIMIZED_PROFILES = {
+    "v1": OptimizedProfileSpec(
+        name="v1",
+        settings_file="settings.optimized.yaml",
+        chunk_size=1800,
+        chunk_overlap=80,
+        quality_note=(
+            "Standard indexing kept, but chat model, embedding model, and chunking were tuned for speed."
+        ),
+    ),
+    "v2": OptimizedProfileSpec(
+        name="v2",
+        settings_file="settings.optimized.v2.yaml",
+        chunk_size=2200,
+        chunk_overlap=64,
+        quality_note=(
+            "Standard indexing kept, with more aggressive concurrency, larger chunks, shorter summaries, "
+            "and leaner community reports to reduce cold latency. Expect a sparser graph and less detailed "
+            "community reports than v1."
+        ),
+    ),
+}
 
 
 def parse_args() -> argparse.Namespace:
@@ -77,6 +112,12 @@ def parse_args() -> argparse.Namespace:
         choices=("standard", "fast", "standard-update", "fast-update"),
         default="standard",
         help="Indexing method for the optimized runs.",
+    )
+    parser.add_argument(
+        "--optimized-profile",
+        choices=sorted(OPTIMIZED_PROFILES),
+        default="v1",
+        help="Versioned optimized settings profile to benchmark.",
     )
     parser.add_argument(
         "--skip-preflight",
@@ -670,13 +711,8 @@ def execute_run(
         "embedding_model": run_spec.embedding_model,
         "embedding_vector_size": infer_vector_size(run_spec.embedding_model),
         "chunking": {
-            "size": 1200,
-            "overlap": 100,
-        }
-        if run_spec.settings_file == "settings.baseline.yaml"
-        else {
-            "size": 1800,
-            "overlap": 80,
+            "size": run_spec.chunk_size,
+            "overlap": run_spec.chunk_overlap,
         },
         "started_at": started_at.isoformat(),
         "ended_at": ended_at.isoformat(),
@@ -805,6 +841,7 @@ def main() -> int:
     runner = detect_runner(args.runner, args.container)
     ensure_directories()
     runtime_env = resolve_runtime_env(runner, args.container)
+    optimized_profile = OPTIMIZED_PROFILES[args.optimized_profile]
     metadata = {
         "generated_at": datetime.now().astimezone().isoformat(),
         "runner": runner,
@@ -824,31 +861,40 @@ def main() -> int:
         embedding_model=runtime_env["SCW_BASELINE_EMBEDDING_MODEL"],
         quality_note="Reference run with standard indexing, baseline chunking, and the baseline chat/embedding models.",
         clear_cache=True,
+        chunk_size=1200,
+        chunk_overlap=100,
     )
     optimized_quality_note = (
-        "Standard indexing kept, but chat model, embedding model, and chunking were tuned for speed."
+        optimized_profile.quality_note
         if args.optimized_method == "standard"
-        else "Fast indexing reduces LLM work further, but graph fidelity is expected to drop on this French corpus."
+        else (
+            f"{optimized_profile.quality_note} Fast indexing further reduces LLM work, "
+            "but graph fidelity is expected to drop on this French corpus."
+        )
     )
     optimized_cold_spec = RunSpec(
         name="optimized_cold",
-        settings_file="settings.optimized.yaml",
+        settings_file=optimized_profile.settings_file,
         method=args.optimized_method,
         cache_state="cold",
         chat_model=runtime_env["SCW_OPTIMIZED_CHAT_MODEL"],
         embedding_model=runtime_env["SCW_OPTIMIZED_EMBEDDING_MODEL"],
         quality_note=optimized_quality_note,
         clear_cache=True,
+        chunk_size=optimized_profile.chunk_size,
+        chunk_overlap=optimized_profile.chunk_overlap,
     )
     optimized_warm_spec = RunSpec(
         name="optimized_warm",
-        settings_file="settings.optimized.yaml",
+        settings_file=optimized_profile.settings_file,
         method=args.optimized_method,
         cache_state="warm",
         chat_model=runtime_env["SCW_OPTIMIZED_CHAT_MODEL"],
         embedding_model=runtime_env["SCW_OPTIMIZED_EMBEDDING_MODEL"],
         quality_note="Same optimized profile rerun with a preserved GraphRAG cache.",
         clear_cache=False,
+        chunk_size=optimized_profile.chunk_size,
+        chunk_overlap=optimized_profile.chunk_overlap,
         reuse_workspace=True,
     )
     preflight: dict[str, Any] = {"baseline": {}, "optimized": {}}

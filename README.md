@@ -431,10 +431,11 @@ Open WebUI itself still points to the `pipelines` service. The general-purpose S
 
 ## Indexing Benchmark
 
-For reproducible local GraphRAG indexing benchmarks, this repository now ships two dedicated settings profiles:
+For reproducible local GraphRAG indexing benchmarks, this repository now ships three versioned settings profiles:
 
 - [`graphrag/settings.baseline.yaml`](./graphrag/settings.baseline.yaml)
 - [`graphrag/settings.optimized.yaml`](./graphrag/settings.optimized.yaml)
+- [`graphrag/settings.optimized.v2.yaml`](./graphrag/settings.optimized.v2.yaml)
 
 The benchmark runner uses the existing local `bridge` container by default, isolates each run in a dedicated GraphRAG workspace, and generates:
 
@@ -463,6 +464,12 @@ Run the default local benchmark with:
 
 ```bash
 python3 scripts/benchmark_indexing.py
+```
+
+To run the more aggressive `standard` optimization profile captured after the first benchmark pass:
+
+```bash
+python3 scripts/benchmark_indexing.py --optimized-profile v2
 ```
 
 To explore the more aggressive `fast` path explicitly:

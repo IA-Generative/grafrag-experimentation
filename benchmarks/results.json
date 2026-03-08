@@ -1,64 +1,115 @@
 {
   "metadata": {
-    "generated_at": "2026-03-08T10:25:32.366108+01:00",
-    "git_commit": "425c3c8",
+    "generated_at": "2026-03-08T10:49:35.110671+01:00",
     "runner": "docker",
     "docker_container": "grafrag-experimentation-bridge-1",
+    "git_commit": "726ebc8",
     "host_os": "macOS-26.3-arm64-arm-64bit",
     "host_python": "3.11.3",
-    "graphrag_version": "3.0.6",
-    "litellm_version": "1.82.0",
-    "openai_version": "2.26.0"
+    "runner_versions": {
+      "python_version": "3.12.13",
+      "graphrag_version": "3.0.6",
+      "litellm_version": "1.82.0",
+      "openai_version": "2.26.0"
+    }
   },
   "corpus": {
     "document_count": 17,
-    "total_bytes": 638699
+    "total_bytes": 659262,
+    "documents": [
+      {
+        "path": "README.md",
+        "size_bytes": 377
+      },
+      {
+        "path": "sample-corpus.md",
+        "size_bytes": 579
+      },
+      {
+        "path": "security-notes.md",
+        "size_bytes": 324
+      },
+      {
+        "path": "wikipedia-medieval-anglo-french-wars/00-overview.md",
+        "size_bytes": 1848
+      },
+      {
+        "path": "wikipedia-medieval-anglo-french-wars/01-guerre-de-cent-ans.md",
+        "size_bytes": 157061
+      },
+      {
+        "path": "wikipedia-medieval-anglo-french-wars/02-philippe-vi-de-valois.md",
+        "size_bytes": 74802
+      },
+      {
+        "path": "wikipedia-medieval-anglo-french-wars/03-edouard-iii.md",
+        "size_bytes": 76847
+      },
+      {
+        "path": "wikipedia-medieval-anglo-french-wars/04-bataille-de-crecy.md",
+        "size_bytes": 23209
+      },
+      {
+        "path": "wikipedia-medieval-anglo-french-wars/05-bataille-de-poitiers-1356.md",
+        "size_bytes": 22859
+      },
+      {
+        "path": "wikipedia-medieval-anglo-french-wars/06-traite-de-bretigny.md",
+        "size_bytes": 7639
+      },
+      {
+        "path": "wikipedia-medieval-anglo-french-wars/07-charles-v-le-sage.md",
+        "size_bytes": 164909
+      },
+      {
+        "path": "wikipedia-medieval-anglo-french-wars/08-bataille-d-azincourt.md",
+        "size_bytes": 25613
+      },
+      {
+        "path": "wikipedia-medieval-anglo-french-wars/09-henri-v-roi-d-angleterre.md",
+        "size_bytes": 15080
+      },
+      {
+        "path": "wikipedia-medieval-anglo-french-wars/10-traite-de-troyes.md",
+        "size_bytes": 8277
+      },
+      {
+        "path": "wikipedia-medieval-anglo-french-wars/11-bataille-et-siege-d-orleans.md",
+        "size_bytes": 1330
+      },
+      {
+        "path": "wikipedia-medieval-anglo-french-wars/12-jeanne-d-arc.md",
+        "size_bytes": 77461
+      },
+      {
+        "path": "wikipedia-medieval-anglo-french-wars/99-test-questions.md",
+        "size_bytes": 1047
+      }
+    ]
   },
-  "runs": {
-    "baseline_cold_failed": {
-      "duration_seconds": 1425.028,
+  "preflight": {
+    "baseline": {
       "chat_model": "gpt-oss-120b",
       "embedding_model": "bge-multilingual-gemma2",
-      "chunking": {
-        "size": 1200,
-        "overlap": 100
-      },
-      "method": "standard",
-      "note": "Cold baseline reached the final text-embedding workflow, then hit a LanceDB temp-directory bug before the vector store was finalized.",
-      "artifact_path": "benchmarks/artifacts/20260308-085437/baseline_cold"
+      "chat_response": "{\"ok\":true,\"label\":\"benchmark\"}",
+      "embedding_vector_size": 3584
     },
-    "baseline_cold_reconstructed": {
-      "duration_seconds": 2061.491,
-      "chat_model": "gpt-oss-120b",
-      "embedding_model": "bge-multilingual-gemma2",
-      "chunking": {
-        "size": 1200,
-        "overlap": 100
-      },
-      "method": "standard",
-      "documents": 17,
-      "chunks": 157,
-      "entities": 3513,
-      "relationships": 4950,
-      "communities": 653,
-      "community_reports": 653,
-      "llm_calls_observed": 2410,
-      "total_tokens": 7868512,
-      "reconstruction": {
-        "cold_failure_seconds": 1425.028,
-        "warm_recovery_seconds": 636.463,
-        "note": "Reconstructed from the initial cold run plus a successful warm replay after forcing TMPDIR=/tmp inside the container."
-      },
-      "artifact_path": "benchmarks/artifacts/20260308-085437/baseline_recover_warm"
-    },
-    "baseline_recover_warm": {
-      "name": "baseline_recover_warm",
+    "optimized": {
+      "chat_model": "mistral-small-3.2-24b-instruct-2506",
+      "embedding_model": "qwen3-embedding-8b",
+      "chat_response": "{\n  \"ok\": true,\n  \"label\": \"benchmark\"\n}",
+      "embedding_vector_size": 4096
+    }
+  },
+  "runs": [
+    {
+      "name": "baseline_cold",
       "settings_file": "settings.baseline.yaml",
-      "settings_path": "graphrag/benchmarks/workspaces/20260308-085437-baseline_cold/settings.yaml",
-      "workspace_path": "graphrag/benchmarks/workspaces/20260308-085437-baseline_cold",
-      "artifact_path": "benchmarks/artifacts/20260308-085437/baseline_recover_warm",
+      "settings_path": "graphrag/benchmarks/workspaces/20260308-104938-baseline_cold/settings.yaml",
+      "workspace_path": "graphrag/benchmarks/workspaces/20260308-104938-baseline_cold",
+      "artifact_path": "benchmarks/artifacts/20260308-104938/baseline_cold",
       "method": "standard",
-      "cache_state": "warm-recovery",
+      "cache_state": "cold",
       "chat_model": "gpt-oss-120b",
       "embedding_model": "bge-multilingual-gemma2",
       "embedding_vector_size": 3584,
@@ -66,27 +117,27 @@
         "size": 1200,
         "overlap": 100
       },
-      "started_at": "2026-03-08T09:41:57.592377+01:00",
-      "ended_at": "2026-03-08T09:52:34.053369+01:00",
-      "duration_seconds": 636.463,
-      "quality_note": "Warm replay used only to finish the final embedding/vector-store stage after the initial cold run hit a temp-directory bug.",
+      "started_at": "2026-03-08T10:49:39.002520+01:00",
+      "ended_at": "2026-03-08T11:18:51.709566+01:00",
+      "duration_seconds": 1752.712,
+      "quality_note": "Reference run with standard indexing, baseline chunking, and the baseline chat/embedding models.",
       "documents": 17,
       "chunks": 157,
-      "entities": 3513,
-      "relationships": 4950,
-      "communities": 653,
-      "community_reports": 653,
+      "entities": 3653,
+      "relationships": 5203,
+      "communities": 712,
+      "community_reports": 712,
       "phase_timings": {
         "phases_seconds": {
-          "create_base_text_units": 1.985,
-          "create_final_documents": 0.005,
-          "extract_graph": 118.01,
-          "finalize_graph": 2.04,
+          "create_base_text_units": 1.063,
+          "create_final_documents": 0.004,
+          "extract_graph": 846.963,
+          "finalize_graph": 2.019,
           "extract_covariates": 0.0,
-          "create_communities": 0.995,
-          "create_final_text_units": 0.986,
-          "create_community_reports": 207.967,
-          "generate_text_embeddings": 300.015
+          "create_communities": 0.988,
+          "create_final_text_units": 0.988,
+          "create_community_reports": 577.003,
+          "generate_text_embeddings": 319.03
         },
         "progress": {
           "chunker_progress": {
@@ -97,47 +148,43 @@
             "current": 157,
             "total": 157
           },
-          "level_4_summarize_communities_progress": {
-            "current": 2,
-            "total": 2
-          },
           "level_3_summarize_communities_progress": {
-            "current": 13,
-            "total": 13
+            "current": 37,
+            "total": 37
           },
           "level_2_summarize_communities_progress": {
-            "current": 370,
-            "total": 370
+            "current": 435,
+            "total": 435
           },
           "level_1_summarize_communities_progress": {
-            "current": 241,
-            "total": 241
+            "current": 215,
+            "total": 215
           },
           "level_0_summarize_communities_progress": {
-            "current": 27,
-            "total": 27
+            "current": 25,
+            "total": 25
           },
           "generate_embeddings_progress": {
             "current": 29,
             "total": 29
           }
         },
-        "started_at": "2026-03-08T08:42:01.004900",
-        "ended_at": "2026-03-08T08:52:33.045800"
+        "started_at": "2026-03-08T09:49:41.099300",
+        "ended_at": "2026-03-08T10:18:51.001900"
       },
       "cache_metrics": {
-        "file_count": 2410,
+        "file_count": 2437,
         "categories": {
           "community_reporting": {
-            "files": 653,
-            "attempted_request_count": 653,
+            "files": 712,
+            "attempted_request_count": 712,
             "successful_response_count": 0,
             "failed_response_count": 0,
-            "responses_with_tokens": 653,
-            "prompt_tokens": 2173112,
-            "completion_tokens": 1018038,
-            "total_tokens": 3191150,
-            "compute_duration_seconds": 10501.956,
+            "responses_with_tokens": 712,
+            "prompt_tokens": 2321716,
+            "completion_tokens": 1098936,
+            "total_tokens": 3420652,
+            "compute_duration_seconds": 11601.359,
             "cost": 0.0
           },
           "extract_graph": {
@@ -146,78 +193,78 @@
             "successful_response_count": 0,
             "failed_response_count": 0,
             "responses_with_tokens": 314,
-            "prompt_tokens": 1365974,
-            "completion_tokens": 1383696,
-            "total_tokens": 2749670,
-            "compute_duration_seconds": 14045.932,
+            "prompt_tokens": 1371290,
+            "completion_tokens": 1395528,
+            "total_tokens": 2766818,
+            "compute_duration_seconds": 14205.804,
             "cost": 0.0
           },
           "summarize_descriptions": {
-            "files": 1120,
-            "attempted_request_count": 1120,
+            "files": 1074,
+            "attempted_request_count": 1074,
             "successful_response_count": 0,
             "failed_response_count": 0,
-            "responses_with_tokens": 1120,
-            "prompt_tokens": 341620,
-            "completion_tokens": 507095,
-            "total_tokens": 848715,
-            "compute_duration_seconds": 4910.079,
+            "responses_with_tokens": 1074,
+            "prompt_tokens": 327035,
+            "completion_tokens": 491338,
+            "total_tokens": 818373,
+            "compute_duration_seconds": 5112.548,
             "cost": 0.0
           },
           "text_embedding": {
-            "files": 323,
-            "attempted_request_count": 323,
+            "files": 337,
+            "attempted_request_count": 337,
             "successful_response_count": 0,
             "failed_response_count": 0,
-            "responses_with_tokens": 323,
-            "prompt_tokens": 1078977,
+            "responses_with_tokens": 337,
+            "prompt_tokens": 1120416,
             "completion_tokens": 0,
-            "total_tokens": 1078977,
-            "compute_duration_seconds": 3079.786,
+            "total_tokens": 1120416,
+            "compute_duration_seconds": 3195.28,
             "cost": 0.0
           }
         },
-        "llm_calls_observed": 2410,
-        "total_tokens": 7868512,
+        "llm_calls_observed": 2437,
+        "total_tokens": 8126259,
         "estimated_cost": null
       }
     },
-    "optimized_cold": {
+    {
       "name": "optimized_cold",
-      "settings_file": "settings.optimized.yaml",
-      "settings_path": "graphrag/benchmarks/workspaces/20260308-085437-optimized_cold/settings.yaml",
-      "workspace_path": "graphrag/benchmarks/workspaces/20260308-085437-optimized_cold",
-      "artifact_path": "benchmarks/artifacts/20260308-085437/optimized_cold",
+      "settings_file": "settings.optimized.v2.yaml",
+      "settings_path": "graphrag/benchmarks/workspaces/20260308-104938-optimized_cold/settings.yaml",
+      "workspace_path": "graphrag/benchmarks/workspaces/20260308-104938-optimized_cold",
+      "artifact_path": "benchmarks/artifacts/20260308-104938/optimized_cold",
       "method": "standard",
       "cache_state": "cold",
       "chat_model": "mistral-small-3.2-24b-instruct-2506",
       "embedding_model": "qwen3-embedding-8b",
       "embedding_vector_size": 4096,
       "chunking": {
-        "size": 1800,
-        "overlap": 80
+        "size": 2200,
+        "overlap": 64
       },
-      "started_at": "2026-03-08T09:52:35.536117+01:00",
-      "ended_at": "2026-03-08T10:18:14.263463+01:00",
-      "duration_seconds": 1538.733,
-      "quality_note": "Standard indexing with a faster chat model, faster embeddings, and larger chunks.",
+      "started_at": "2026-03-08T11:18:53.013907+01:00",
+      "ended_at": "2026-03-08T11:38:42.081601+01:00",
+      "duration_seconds": 1189.072,
+      "quality_note": "Standard indexing kept, with more aggressive concurrency, larger chunks, shorter summaries, and leaner community reports to reduce cold latency. Expect a sparser graph and less detailed community reports than v1.",
       "documents": 17,
-      "chunks": 106,
-      "entities": 2073,
-      "relationships": 3920,
-      "communities": 338,
-      "community_reports": 337,
+      "chunks": 84,
+      "entities": 1844,
+      "relationships": 3472,
+      "communities": 300,
+      "community_reports": 300,
       "phase_timings": {
         "phases_seconds": {
           "create_base_text_units": 1.96,
-          "create_final_documents": 0.004,
-          "extract_graph": 796.06,
-          "finalize_graph": 1.958,
+          "create_final_documents": 0.003,
+          "extract_graph": 713.967,
+          "finalize_graph": 1.016,
           "extract_covariates": 0.0,
-          "create_communities": 0.06,
+          "create_communities": 0.055,
           "create_final_text_units": 0.961,
-          "create_community_reports": 524.028,
-          "generate_text_embeddings": 208.946
+          "create_community_reports": 276.969,
+          "generate_text_embeddings": 190.009
         },
         "progress": {
           "chunker_progress": {
@@ -225,126 +272,126 @@
             "total": 17
           },
           "extract_graph_progress": {
-            "current": 106,
-            "total": 106
+            "current": 84,
+            "total": 84
           },
           "level_3_summarize_communities_progress": {
-            "current": 30,
-            "total": 30
+            "current": 29,
+            "total": 29
           },
           "level_2_summarize_communities_progress": {
-            "current": 186,
-            "total": 186
+            "current": 134,
+            "total": 134
           },
           "level_1_summarize_communities_progress": {
-            "current": 103,
-            "total": 103
+            "current": 119,
+            "total": 119
           },
           "level_0_summarize_communities_progress": {
-            "current": 19,
-            "total": 19
+            "current": 18,
+            "total": 18
           },
           "generate_embeddings_progress": {
-            "current": 30,
-            "total": 30
+            "current": 26,
+            "total": 26
           }
         },
-        "started_at": "2026-03-08T08:52:39.017100",
-        "ended_at": "2026-03-08T09:18:13.035200"
+        "started_at": "2026-03-08T10:18:56.040600",
+        "ended_at": "2026-03-08T10:38:41.024200"
       },
       "cache_metrics": {
-        "file_count": 1712,
+        "file_count": 1424,
         "categories": {
           "community_reporting": {
-            "files": 338,
-            "attempted_request_count": 338,
+            "files": 300,
+            "attempted_request_count": 300,
             "successful_response_count": 0,
             "failed_response_count": 0,
-            "responses_with_tokens": 338,
-            "prompt_tokens": 1213880,
-            "completion_tokens": 502751,
-            "total_tokens": 1716631,
-            "compute_duration_seconds": 5024.084,
+            "responses_with_tokens": 300,
+            "prompt_tokens": 1050624,
+            "completion_tokens": 396725,
+            "total_tokens": 1447349,
+            "compute_duration_seconds": 4500.439,
             "cost": 0.0
           },
           "extract_graph": {
-            "files": 212,
-            "attempted_request_count": 212,
+            "files": 168,
+            "attempted_request_count": 168,
             "successful_response_count": 0,
             "failed_response_count": 0,
-            "responses_with_tokens": 212,
-            "prompt_tokens": 1017265,
-            "completion_tokens": 572291,
-            "total_tokens": 1589556,
-            "compute_duration_seconds": 10615.433,
+            "responses_with_tokens": 168,
+            "prompt_tokens": 843068,
+            "completion_tokens": 407228,
+            "total_tokens": 1250296,
+            "compute_duration_seconds": 9263.64,
             "cost": 0.0
           },
           "summarize_descriptions": {
-            "files": 947,
-            "attempted_request_count": 947,
+            "files": 828,
+            "attempted_request_count": 828,
             "successful_response_count": 0,
             "failed_response_count": 0,
-            "responses_with_tokens": 947,
-            "prompt_tokens": 196084,
-            "completion_tokens": 205851,
-            "total_tokens": 401935,
-            "compute_duration_seconds": 1727.732,
+            "responses_with_tokens": 828,
+            "prompt_tokens": 172211,
+            "completion_tokens": 156336,
+            "total_tokens": 328547,
+            "compute_duration_seconds": 1468.468,
             "cost": 0.0
           },
           "text_embedding": {
-            "files": 215,
-            "attempted_request_count": 215,
+            "files": 128,
+            "attempted_request_count": 128,
             "successful_response_count": 0,
             "failed_response_count": 0,
-            "responses_with_tokens": 215,
-            "prompt_tokens": 774253,
+            "responses_with_tokens": 128,
+            "prompt_tokens": 668699,
             "completion_tokens": 0,
-            "total_tokens": 774253,
-            "compute_duration_seconds": 2238.94,
+            "total_tokens": 668699,
+            "compute_duration_seconds": 2566.951,
             "cost": 0.0
           }
         },
-        "llm_calls_observed": 1712,
-        "total_tokens": 4482375,
+        "llm_calls_observed": 1424,
+        "total_tokens": 3694891,
         "estimated_cost": null
       }
     },
-    "optimized_warm": {
+    {
       "name": "optimized_warm",
-      "settings_file": "settings.optimized.yaml",
-      "settings_path": "graphrag/benchmarks/workspaces/20260308-085437-optimized_cold/settings.yaml",
-      "workspace_path": "graphrag/benchmarks/workspaces/20260308-085437-optimized_cold",
-      "artifact_path": "benchmarks/artifacts/20260308-085437/optimized_warm",
+      "settings_file": "settings.optimized.v2.yaml",
+      "settings_path": "graphrag/benchmarks/workspaces/20260308-104938-optimized_cold/settings.yaml",
+      "workspace_path": "graphrag/benchmarks/workspaces/20260308-104938-optimized_cold",
+      "artifact_path": "benchmarks/artifacts/20260308-104938/optimized_warm",
       "method": "standard",
       "cache_state": "warm",
       "chat_model": "mistral-small-3.2-24b-instruct-2506",
       "embedding_model": "qwen3-embedding-8b",
       "embedding_vector_size": 4096,
       "chunking": {
-        "size": 1800,
-        "overlap": 80
+        "size": 2200,
+        "overlap": 64
       },
-      "started_at": "2026-03-08T10:18:15.371740+01:00",
-      "ended_at": "2026-03-08T10:23:40.431026+01:00",
-      "duration_seconds": 325.06,
-      "quality_note": "Same optimized profile rerun with preserved GraphRAG cache.",
+      "started_at": "2026-03-08T11:38:43.175110+01:00",
+      "ended_at": "2026-03-08T11:43:17.048778+01:00",
+      "duration_seconds": 273.875,
+      "quality_note": "Same optimized profile rerun with a preserved GraphRAG cache.",
       "documents": 17,
-      "chunks": 106,
-      "entities": 2073,
-      "relationships": 3920,
-      "communities": 338,
-      "community_reports": 337,
+      "chunks": 84,
+      "entities": 1844,
+      "relationships": 3472,
+      "communities": 300,
+      "community_reports": 300,
       "phase_timings": {
         "phases_seconds": {
-          "create_base_text_units": 1.962,
+          "create_base_text_units": 1.968,
           "create_final_documents": 0.004,
-          "extract_graph": 85.977,
-          "finalize_graph": 1.98,
+          "extract_graph": 77.951,
+          "finalize_graph": 1.023,
           "extract_covariates": 0.0,
-          "create_communities": 0.064,
-          "create_final_text_units": 0.99,
-          "create_community_reports": 138.012,
-          "generate_text_embeddings": 91.972
+          "create_communities": 0.058,
+          "create_final_text_units": 0.959,
+          "create_community_reports": 103.959,
+          "generate_text_embeddings": 83.995
         },
         "progress": {
           "chunker_progress": {
@@ -352,130 +399,103 @@
             "total": 17
           },
           "extract_graph_progress": {
-            "current": 106,
-            "total": 106
+            "current": 84,
+            "total": 84
           },
           "level_3_summarize_communities_progress": {
-            "current": 30,
-            "total": 30
+            "current": 29,
+            "total": 29
           },
           "level_2_summarize_communities_progress": {
-            "current": 186,
-            "total": 186
+            "current": 134,
+            "total": 134
           },
           "level_1_summarize_communities_progress": {
-            "current": 103,
-            "total": 103
+            "current": 119,
+            "total": 119
           },
           "level_0_summarize_communities_progress": {
-            "current": 19,
-            "total": 19
+            "current": 18,
+            "total": 18
           },
           "generate_embeddings_progress": {
-            "current": 30,
-            "total": 30
+            "current": 26,
+            "total": 26
           }
         },
-        "started_at": "2026-03-08T09:18:18.066100",
-        "ended_at": "2026-03-08T09:23:39.066000"
+        "started_at": "2026-03-08T10:38:46.057600",
+        "ended_at": "2026-03-08T10:43:16.010200"
       },
       "cache_metrics": {
-        "file_count": 1712,
+        "file_count": 1424,
         "categories": {
           "community_reporting": {
-            "files": 338,
-            "attempted_request_count": 338,
+            "files": 300,
+            "attempted_request_count": 300,
             "successful_response_count": 0,
             "failed_response_count": 0,
-            "responses_with_tokens": 338,
-            "prompt_tokens": 1213880,
-            "completion_tokens": 502751,
-            "total_tokens": 1716631,
-            "compute_duration_seconds": 5024.084,
+            "responses_with_tokens": 300,
+            "prompt_tokens": 1050624,
+            "completion_tokens": 396725,
+            "total_tokens": 1447349,
+            "compute_duration_seconds": 4500.439,
             "cost": 0.0
           },
           "extract_graph": {
-            "files": 212,
-            "attempted_request_count": 212,
+            "files": 168,
+            "attempted_request_count": 168,
             "successful_response_count": 0,
             "failed_response_count": 0,
-            "responses_with_tokens": 212,
-            "prompt_tokens": 1017265,
-            "completion_tokens": 572291,
-            "total_tokens": 1589556,
-            "compute_duration_seconds": 10615.433,
+            "responses_with_tokens": 168,
+            "prompt_tokens": 843068,
+            "completion_tokens": 407228,
+            "total_tokens": 1250296,
+            "compute_duration_seconds": 9263.64,
             "cost": 0.0
           },
           "summarize_descriptions": {
-            "files": 947,
-            "attempted_request_count": 947,
+            "files": 828,
+            "attempted_request_count": 828,
             "successful_response_count": 0,
             "failed_response_count": 0,
-            "responses_with_tokens": 947,
-            "prompt_tokens": 196084,
-            "completion_tokens": 205851,
-            "total_tokens": 401935,
-            "compute_duration_seconds": 1727.732,
+            "responses_with_tokens": 828,
+            "prompt_tokens": 172211,
+            "completion_tokens": 156336,
+            "total_tokens": 328547,
+            "compute_duration_seconds": 1468.468,
             "cost": 0.0
           },
           "text_embedding": {
-            "files": 215,
-            "attempted_request_count": 215,
+            "files": 128,
+            "attempted_request_count": 128,
             "successful_response_count": 0,
             "failed_response_count": 0,
-            "responses_with_tokens": 215,
-            "prompt_tokens": 774253,
+            "responses_with_tokens": 128,
+            "prompt_tokens": 668699,
             "completion_tokens": 0,
-            "total_tokens": 774253,
-            "compute_duration_seconds": 2238.94,
+            "total_tokens": 668699,
+            "compute_duration_seconds": 2566.951,
             "cost": 0.0
           }
         },
-        "llm_calls_observed": 1712,
-        "total_tokens": 4482375,
+        "llm_calls_observed": 1424,
+        "total_tokens": 3694891,
         "estimated_cost": null
       }
     }
-  },
+  ],
   "comparisons": {
-    "baseline_reconstructed_vs_optimized_cold": {
-      "absolute_gain_seconds": 522.758,
-      "relative_gain_percent": 25.36
+    "cold": {
+      "baseline_run": "baseline_cold",
+      "optimized_run": "optimized_cold",
+      "absolute_gain_seconds": 563.64,
+      "relative_gain_percent": 32.16
     },
-    "optimized_cold_vs_optimized_warm": {
-      "absolute_gain_seconds": 1213.673,
-      "relative_gain_percent": 78.87
-    },
-    "structure_reduction": {
-      "chunks_delta": -51,
-      "chunks_delta_percent": -32.48,
-      "entities_delta": -1440,
-      "entities_delta_percent": -40.99,
-      "relationships_delta": -1030,
-      "relationships_delta_percent": -20.81,
-      "community_reports_delta": -316,
-      "community_reports_delta_percent": -48.39,
-      "llm_calls_delta": -698,
-      "llm_calls_delta_percent": -28.96,
-      "tokens_delta": -3386137,
-      "tokens_delta_percent": -43.03
+    "warm": {
+      "baseline_run": "optimized_cold",
+      "optimized_run": "optimized_warm",
+      "absolute_gain_seconds": 915.197,
+      "relative_gain_percent": 76.97
     }
-  },
-  "cost_proxy_usd": {
-    "baseline_reconstructed_cold": 2.4353,
-    "optimized_cold": 0.8898,
-    "absolute_gain": 1.5455,
-    "relative_gain_percent": 63.46,
-    "assumptions": [
-      "Proxy based on official Scaleway token prices for gpt-oss-120b, mistral-small-3.2-24b-instruct-2506, bge-multilingual-gemma2, and qwen3-embedding-8b.",
-      "This is not authoritative Managed Inference billing for a dedicated deployment.",
-      "Warm-cache runs are excluded from monetary comparison because the replay is almost entirely cache hits."
-    ]
-  },
-  "notes": [
-    "Cold means an empty GraphRAG cache with output artifacts purged before the run.",
-    "Warm means the optimized cache was preserved while output artifacts were rebuilt.",
-    "The initial cold baseline hit a LanceDB temp-directory bug at generate_text_embeddings; forcing TMPDIR=/tmp fixed the issue for subsequent runs.",
-    "All timings were measured locally against the same 17-document corpus mounted into the running bridge container."
-  ]
+  }
 }
