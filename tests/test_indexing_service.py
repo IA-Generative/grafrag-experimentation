@@ -4,8 +4,8 @@ import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "bridge"))
 
 from config import Settings  # noqa: E402
-from service import GraphRAGService  # noqa: E402
-from models import IndexRequest  # noqa: E402
+from service import GraphRAGService, ScoredDocument  # noqa: E402
+from models import IndexRequest, QueryRequest  # noqa: E402
 
 
 def build_settings(tmp_path: Path) -> Settings:
@@ -16,7 +16,11 @@ def build_settings(tmp_path: Path) -> Settings:
         GRAPHRAG_OUTPUT_DIR=root / "output",
         GRAPHRAG_CACHE_DIR=root / "cache",
         GRAPH_VIEWER_AUTH_REQUIRED=False,
+        REQUEST_TIMEOUT_SECONDS=120,
+        GRAPHRAG_CLI_TIMEOUT_SECONDS=30,
+        GRAPHRAG_GLOBAL_CLI_TIMEOUT_SECONDS=90,
         GRAPHRAG_INDEX_TIMEOUT_SECONDS=321,
+        LLM_TIMEOUT_SECONDS=20,
     )
 
 
@@ -99,3 +103,79 @@ def test_graph_data_reports_missing_corpus_when_no_fallback_documents_exist(tmp_
     assert data.graph_ready is False
     assert data.graph_kind == "document"
     assert "No local documents" in data.message
+
+
+def test_query_uses_longer_timeout_for_global_method(tmp_path, monkeypatch) -> None:
+    service = GraphRAGService(build_settings(tmp_path))
+    captured: dict[str, object] = {}
+
+    monkeypatch.setattr(service, "_graphrag_cli_available", lambda: True)
+    monkeypatch.setattr(service, "_graphrag_query_artifacts_present", lambda: True)
+    monkeypatch.setattr(
+        service,
+        "_rank_documents",
+        lambda question, top_k: [
+            ScoredDocument(path="input/demo.md", excerpt="demo", score=1)
+        ],
+    )
+    monkeypatch.setattr(
+        service,
+        "_synthesize_answer",
+        lambda question, context, timeout_seconds: ("fallback answer", "local-deterministic"),
+    )
+
+    def fake_query(question: str, method: str, response_type: str, timeout_seconds: int):
+        captured["method"] = method
+        captured["timeout_seconds"] = timeout_seconds
+        return None
+
+    monkeypatch.setattr(service, "_query_with_graphrag", fake_query)
+
+    result = service.query(
+        QueryRequest(question="Compare Bretigny et Troyes.", method="global", top_k=1)
+    )
+
+    assert captured["method"] == "global"
+    assert captured["timeout_seconds"] == 90
+    assert result.engine_used == "local-deterministic"
+    assert result.warnings == [
+        "GraphRAG CLI global query failed or exceeded its 90s time budget, "
+        "so the bridge used deterministic corpus retrieval."
+    ]
+
+
+def test_query_keeps_shorter_timeout_for_local_method(tmp_path, monkeypatch) -> None:
+    service = GraphRAGService(build_settings(tmp_path))
+    captured: dict[str, object] = {}
+
+    monkeypatch.setattr(service, "_graphrag_cli_available", lambda: True)
+    monkeypatch.setattr(service, "_graphrag_query_artifacts_present", lambda: True)
+    monkeypatch.setattr(
+        service,
+        "_rank_documents",
+        lambda question, top_k: [
+            ScoredDocument(path="input/demo.md", excerpt="demo", score=1)
+        ],
+    )
+    monkeypatch.setattr(
+        service,
+        "_synthesize_answer",
+        lambda question, context, timeout_seconds: ("fallback answer", "local-deterministic"),
+    )
+
+    def fake_query(question: str, method: str, response_type: str, timeout_seconds: int):
+        captured["method"] = method
+        captured["timeout_seconds"] = timeout_seconds
+        return None
+
+    monkeypatch.setattr(service, "_query_with_graphrag", fake_query)
+
+    result = service.query(QueryRequest(question="Que fait le bridge ?", top_k=1))
+
+    assert captured["method"] == "local"
+    assert captured["timeout_seconds"] == 30
+    assert result.engine_used == "local-deterministic"
+    assert result.warnings == [
+        "GraphRAG CLI local query failed or exceeded its 30s time budget, "
+        "so the bridge used deterministic corpus retrieval."
+    ]

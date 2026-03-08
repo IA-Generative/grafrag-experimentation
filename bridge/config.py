@@ -111,10 +111,13 @@ class Settings(BaseSettings):
         default="", validation_alias="GRAPHRAG_CACHE_S3_SESSION_TOKEN"
     )
     request_timeout_seconds: int = Field(
-        default=55, validation_alias="REQUEST_TIMEOUT_SECONDS"
+        default=120, validation_alias="REQUEST_TIMEOUT_SECONDS"
     )
     graphrag_cli_timeout_seconds: int = Field(
         default=30, validation_alias="GRAPHRAG_CLI_TIMEOUT_SECONDS"
+    )
+    graphrag_global_cli_timeout_seconds: int = Field(
+        default=90, validation_alias="GRAPHRAG_GLOBAL_CLI_TIMEOUT_SECONDS"
     )
     graphrag_index_timeout_seconds: int = Field(
         default=3600, validation_alias="GRAPHRAG_INDEX_TIMEOUT_SECONDS"

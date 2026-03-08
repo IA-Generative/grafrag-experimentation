@@ -57,6 +57,37 @@ sync_llm_env_aliases() {
     export OPENAI_MODEL="${SCW_LLM_MODEL}"
   fi
 
+  if [[ -z "${SCW_API_KEY:-}" && -n "${SCW_SECRET_KEY_LLM:-}" ]]; then
+    export SCW_API_KEY="${SCW_SECRET_KEY_LLM}"
+  fi
+  if [[ -z "${SCW_SECRET_KEY_LLM:-}" && -n "${SCW_API_KEY:-}" ]]; then
+    export SCW_SECRET_KEY_LLM="${SCW_API_KEY}"
+  fi
+
+  if [[ -z "${SCW_CHAT_BASE_URL:-}" && -n "${SCW_LLM_BASE_URL:-}" ]]; then
+    export SCW_CHAT_BASE_URL="${SCW_LLM_BASE_URL}"
+  fi
+  if [[ -z "${SCW_EMBEDDING_BASE_URL:-}" && -n "${SCW_LLM_BASE_URL:-}" ]]; then
+    export SCW_EMBEDDING_BASE_URL="${SCW_LLM_BASE_URL}"
+  fi
+  if [[ -z "${SCW_LLM_BASE_URL:-}" && -n "${SCW_CHAT_BASE_URL:-}" ]]; then
+    export SCW_LLM_BASE_URL="${SCW_CHAT_BASE_URL}"
+  fi
+
+  if [[ -z "${SCW_CHAT_MODEL:-}" && -n "${SCW_LLM_MODEL:-}" ]]; then
+    export SCW_CHAT_MODEL="${SCW_LLM_MODEL}"
+  fi
+  if [[ -z "${SCW_LLM_MODEL:-}" && -n "${SCW_CHAT_MODEL:-}" ]]; then
+    export SCW_LLM_MODEL="${SCW_CHAT_MODEL}"
+  fi
+
+  if [[ -z "${SCW_EMBEDDING_MODEL:-}" && -n "${OPENAI_EMBEDDING_MODEL:-}" ]]; then
+    export SCW_EMBEDDING_MODEL="${OPENAI_EMBEDDING_MODEL}"
+  fi
+  if [[ -z "${OPENAI_EMBEDDING_MODEL:-}" && -n "${SCW_EMBEDDING_MODEL:-}" ]]; then
+    export OPENAI_EMBEDDING_MODEL="${SCW_EMBEDDING_MODEL}"
+  fi
+
   if [[ -z "${OPENAI_EMBEDDING_VECTOR_SIZE:-}" ]]; then
     case "${OPENAI_EMBEDDING_MODEL:-bge-multilingual-gemma2}" in
       qwen3-embedding-8b)

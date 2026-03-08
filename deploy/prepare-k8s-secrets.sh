@@ -12,6 +12,7 @@ kubectl get namespace "$NAMESPACE" >/dev/null 2>&1 || kubectl create namespace "
 
 kubectl -n "$NAMESPACE" create secret generic grafrag-secrets \
   --from-literal=SCW_SECRET_KEY_LLM="${SCW_SECRET_KEY_LLM:-CHANGE_ME}" \
+  --from-literal=SCW_API_KEY="${SCW_API_KEY:-${SCW_SECRET_KEY_LLM:-CHANGE_ME}}" \
   --from-literal=PIPELINES_API_KEY="${PIPELINES_API_KEY:-CHANGE_ME}" \
   --from-literal=WEBUI_SECRET_KEY="${WEBUI_SECRET_KEY:-CHANGE_ME}" \
   --from-literal=SEARXNG_SECRET="${SEARXNG_SECRET:-CHANGE_ME}" \

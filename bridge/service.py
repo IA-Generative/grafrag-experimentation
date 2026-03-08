@@ -128,6 +128,12 @@ class GraphRAGService:
             "graphrag_cache_s3_prefix": self.settings.graphrag_cache_s3_prefix,
             "graphrag_method": self.settings.graphrag_method,
             "graphrag_top_k": self.settings.graphrag_top_k,
+            "request_timeout_seconds": self.settings.request_timeout_seconds,
+            "graphrag_cli_timeout_seconds": self.settings.graphrag_cli_timeout_seconds,
+            "graphrag_global_cli_timeout_seconds": (
+                self.settings.graphrag_global_cli_timeout_seconds
+            ),
+            "llm_timeout_seconds": self.settings.llm_timeout_seconds,
             "graphrag_query_ready": self._graphrag_query_artifacts_present(),
         }
 
@@ -149,10 +155,7 @@ class GraphRAGService:
         deadline = time.monotonic() + max(5, self.settings.request_timeout_seconds)
 
         if self._graphrag_cli_available() and self._graphrag_query_artifacts_present():
-            cli_timeout = min(
-                self.settings.graphrag_cli_timeout_seconds,
-                self._remaining_seconds(deadline, reserve_seconds=10),
-            )
+            cli_timeout = self._cli_timeout_for_method(method, deadline)
             cli_output = self._query_with_graphrag(
                 request.question,
                 method,
@@ -186,7 +189,9 @@ class GraphRAGService:
                 )
             else:
                 warnings.append(
-                    "GraphRAG CLI query failed or exceeded its time budget, so the bridge used deterministic corpus retrieval."
+                    "GraphRAG CLI "
+                    f"{method} query failed or exceeded its {cli_timeout}s time budget, "
+                    "so the bridge used deterministic corpus retrieval."
                 )
         else:
             warnings.append(
@@ -820,6 +825,18 @@ class GraphRAGService:
         if not result or result.returncode != 0:
             return None
         return result.stdout.strip() or result.stderr.strip() or None
+
+    def _cli_timeout_for_method(self, method: str, deadline: float) -> int:
+        normalized_method = method.strip().lower()
+        configured_timeout = (
+            self.settings.graphrag_global_cli_timeout_seconds
+            if normalized_method == "global"
+            else self.settings.graphrag_cli_timeout_seconds
+        )
+        return min(
+            configured_timeout,
+            self._remaining_seconds(deadline, reserve_seconds=10),
+        )
 
     def _run_command(
         self,

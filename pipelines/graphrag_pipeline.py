@@ -10,7 +10,7 @@ class Pipeline:
     class Valves(BaseModel):
         bridge_url: str = Field(default="http://bridge:8081")
         default_method: str = Field(default="local")
-        timeout_seconds: int = Field(default=75)
+        timeout_seconds: int = Field(default=140)
 
     def __init__(self) -> None:
         self.type = "manifold"
