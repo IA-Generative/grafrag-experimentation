@@ -9,6 +9,13 @@ The repository now also includes a pragmatic multi-corpus control plane:
 - per-corpus, per-version GraphRAG workspaces
 - a local `drive` mock service that behaves like a simple external collaborative file source for demo and testing
 
+
+
+
+
+
+
+
 ## Architecture
 
 The repository separates user interaction, retrieval orchestration, and infrastructure concerns:
@@ -309,11 +316,11 @@ The screenshots below show the current graph viewer with the left-side controls,
 
 Selected node view with document details and retained excerpts:
 
-![Graph viewer with a selected node, detail panel, and synthesis excerpts](<images/Capture d’écran 2026-03-08 à 20.58.56.png>)
+![Graph viewer with a selected node, detail panel, and synthesis excerpts](/images/Capture%20d%E2%80%99e%CC%81cran%202026-03-08%20a%CC%80%2020.58.56.png)
 
 Compact exploration view with the reading mode selector opened:
 
-![Graph viewer in compact mode with the reading mode selector opened](<images/Capture d’écran 2026-03-08 à 20.59.18.png>)
+![Graph viewer in compact mode with the reading mode selector opened](/images/Capture%20d%E2%80%99e%CC%81cran%202026-03-08%20a%CC%80%2020.59.18.png)
 
 Brand assets for the viewer live in [`bridge/assets`](./bridge/assets). The master image is [`bridge/assets/mirai-graphrag.png`](./bridge/assets/mirai-graphrag.png); regenerate the reduced PNGs, favicon, Apple touch icon, Android icons, and the dedicated Open WebUI model avatar (`mirai-model-avatar-128.png`) with `python3 scripts/generate_brand_assets.py`.
 
