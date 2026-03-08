@@ -312,15 +312,20 @@ The viewer also includes a synthesis workflow aimed at people who need to build 
 
 ## Viewer Examples
 
+Search results with graph links :
+
+![Graph viewer with a selected node, detail panel, and synthesis excerpts](/images/searchgraph.png)
+
+
 The screenshots below show the current graph viewer with the left-side controls, the interactive graph canvas, and the right-side detail/synthesis panel.
 
 Selected node view with document details and retained excerpts:
 
-![Graph viewer with a selected node, detail panel, and synthesis excerpts](/images/Capture%20d%E2%80%99e%CC%81cran%202026-03-08%20a%CC%80%2020.58.56.png)
+![Graph viewer with a selected node, detail panel, and synthesis excerpts](/images/graph-screen1.png)
 
 Compact exploration view with the reading mode selector opened:
 
-![Graph viewer in compact mode with the reading mode selector opened](/images/Capture%20d%E2%80%99e%CC%81cran%202026-03-08%20a%CC%80%2020.59.18.png)
+![Graph viewer in compact mode with the reading mode selector opened](/images/graph-screen2.png)
 
 Brand assets for the viewer live in [`bridge/assets`](./bridge/assets). The master image is [`bridge/assets/mirai-graphrag.png`](./bridge/assets/mirai-graphrag.png); regenerate the reduced PNGs, favicon, Apple touch icon, Android icons, and the dedicated Open WebUI model avatar (`mirai-model-avatar-128.png`) with `python3 scripts/generate_brand_assets.py`.
 
